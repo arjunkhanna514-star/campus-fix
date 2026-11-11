@@ -14,6 +14,27 @@ if (!fs.existsSync(index)) {
 }
 for (const file of fs.readdirSync(PWA)) fs.copyFileSync(path.join(PWA, file), path.join(DIST, file));
 
+// Expo puts the icon and text fonts under dist/assets/node_modules/. Folders
+// named node_modules are skipped by git (and so never reach the host), which
+// leaves empty boxes instead of icons. Move them to assets/vendor and point the
+// app at the new place.
+const fromDir = path.join(DIST, 'assets', 'node_modules');
+if (fs.existsSync(fromDir)) {
+  const toDir = path.join(DIST, 'assets', 'vendor');
+  fs.rmSync(toDir, { recursive: true, force: true });
+  fs.renameSync(fromDir, toDir);
+  const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
+  let changed = 0;
+  for (const file of walk(DIST).filter((f) => /\.(js|html|json|css)$/.test(f))) {
+    const text = fs.readFileSync(file, 'utf8');
+    if (text.includes('/assets/node_modules/')) {
+      fs.writeFileSync(file, text.split('/assets/node_modules/').join('/assets/vendor/'));
+      changed++;
+    }
+  }
+  console.log(`Fonts moved to assets/vendor (${changed} files updated).`);
+}
+
 let html = fs.readFileSync(index, 'utf8');
 const tags = `
     <style id="campus-fix-shell">
