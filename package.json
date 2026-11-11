@@ -1,0 +1,15 @@
+{
+  "name": "campus-fix",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Campus Fix: report problems around campus. Server in server/, mobile app in app/.",
+  "scripts": {
+    "setup": "npm install --prefix server && npm install --prefix app",
+    "server": "npm start --prefix server",
+    "server:dev": "npm run dev --prefix server",
+    "app": "npm start --prefix app",
+    "seed": "npm run seed --prefix server",
+    "smoke": "npm run smoke --prefix server",
+    "typecheck": "npm run typecheck --prefix app"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "Campus Fix",
+    "slug": "campus-fix",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/images/icon.png",
+    "scheme": "campusfix",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "test.campus.fix",
+      "adaptiveIcon": {
+        "backgroundColor": "#18212B",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Campus Fix uses your photos so you can attach a picture of the problem.",
+          "cameraPermission": "Campus Fix uses the camera so you can take a picture of the problem."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "backgroundColor": "#18212B"
+        }
+      ]
+    ]
+  }
+}

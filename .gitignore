@@ -1,0 +1,11 @@
+node_modules/
+.expo/
+dist/
+*.log
+# local database and uploaded photos are created when the server runs
+server/campus.db
+server/campus.db-*
+server/test/smoke-test.db*
+server/uploads/*
+!server/uploads/.gitkeep
+.env
