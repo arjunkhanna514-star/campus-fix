@@ -28,8 +28,10 @@ export type Issue = {
   created_at: string;
   updated_at: string;
   category: Category;
+  department: Department | null;
   reporter: { id: number; name: string };
   upvotes: number;
+  commentCount: number;
   hasUpvoted: boolean;
   isMine: boolean;
 };
@@ -39,12 +41,21 @@ export type HistoryEntry = {
   old_status: Status | null;
   new_status: Status;
   note: string | null;
+  photo_path: string | null;
   changed_at: string;
   changed_by_name: string;
   changed_by_role: Role;
 };
 
-export type IssueDetail = Issue & { history: HistoryEntry[] };
+export type Comment = {
+  id: number;
+  body: string;
+  created_at: string;
+  user: { id: number; name: string; role: Role };
+  isMine: boolean;
+};
+
+export type IssueDetail = Issue & { history: HistoryEntry[]; comments: Comment[] };
 
 export type Level = {
   name: string;
@@ -84,8 +95,11 @@ export type Me = {
   events: PointEvent[];
 };
 
+export type Department = { id: number; name: string; icon: string };
+
 export type Meta = {
-  categories: Category[];
+  categories: (Category & { department_id?: number })[];
+  departments: Department[];
   buildings: string[];
   impacts: Impact[];
   statuses: Status[];
@@ -103,6 +117,7 @@ export type AdminStats = {
   total: number;
   open: number;
   byCategory: { id: number; name: string; icon: string; open: number }[];
+  byDepartment: { id: number; name: string; icon: string; open: number }[];
   topOpen: Issue[];
   avgResolveHours: number | null;
 };

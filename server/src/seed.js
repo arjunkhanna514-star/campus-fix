@@ -3,7 +3,7 @@
 // same known state. It is safe to run while the server is running.
 
 const bcrypt = require('bcryptjs');
-const { db, transaction } = require('./db');
+const { db, transaction, syncDepartments } = require('./db');
 const { POINTS, award, checkBadges } = require('./gamification');
 
 const CATEGORIES = [
@@ -40,6 +40,7 @@ const ISSUES = [
     desc: 'The ceiling projector turns itself off every 10 to 15 minutes and takes a few minutes to come back. Three lectures were interrupted this week.',
     votes: ['chloe', 'luca', 'maria', 'karl', 'nadia', 'sam'],
     steps: [['Acknowledged', 5, 'Logged with the AV team.'], ['In Progress', 3, 'Replacement lamp ordered, fitting on Thursday.']],
+    comments: [['luca', 'Same in the Tuesday 9am lecture. It went off three times.', 5.5], ['admin', 'Thanks. The AV team think the lamp is overheating, so it is being replaced.', 4.8]],
   },
   {
     by: 'chloe', cat: 'Water & Plumbing', building: 'Block B', room: null, note: 'First floor corridor, next to the stairwell', impact: 'High', created: 2,
@@ -47,6 +48,7 @@ const ISSUES = [
     desc: 'Water is dripping from a ceiling tile and a puddle forms on the floor by mid-morning. Someone put a bucket under it but it fills up.',
     votes: ['ben', 'luca', 'maria', 'alice', 'karl'],
     steps: [['Acknowledged', 1.5, 'Maintenance will inspect the pipe above the tile.']],
+    comments: [['maria', 'It is worse today. The bucket overflowed by lunchtime.', 1.2], ['admin', 'Plumber booked for tomorrow morning. Please keep away from the wet tiles.', 1.0]],
   },
   {
     by: 'karl', cat: 'Water & Plumbing', building: 'Block D', room: 'D310', impact: 'High', created: 0.8,
@@ -56,14 +58,15 @@ const ISSUES = [
     steps: [],
   },
   {
-    by: 'luca', cat: 'Network & Wi-Fi', building: 'Library', room: null, note: 'Study area 2, upper floor', impact: 'Medium', created: 1.2,
+    by: 'luca', cat: 'Network & Wi-Fi', building: 'MRC Library', room: null, note: 'Study area 2, upper floor', impact: 'Medium', created: 1.2,
     title: 'Wi-Fi drops every few minutes',
+    comments: [['nadia', 'Happens on the ground floor too, mostly after 2pm.', 0.9]],
     desc: 'The campus Wi-Fi disconnects every few minutes in the upper study area. Laptops and phones both lose the connection, so online submissions keep failing.',
     votes: ['ben', 'chloe', 'maria', 'nadia'],
     steps: [],
   },
   {
-    by: 'maria', cat: 'Safety', building: 'Sports Hall', room: null, note: 'Main entrance', impact: 'High', created: 4,
+    by: 'maria', cat: 'Safety', building: 'Upper Gym', room: null, note: 'Main entrance', impact: 'High', created: 4,
     title: 'Entrance floor is slippery when it rains',
     desc: 'Rainwater gets carried inside and the tiles at the entrance become very slippery. One student already fell on Monday.',
     votes: ['nadia', 'sam', 'karl', 'ben'],
@@ -84,7 +87,7 @@ const ISSUES = [
     steps: [['Acknowledged', 4, null], ['In Progress', 1, 'Electrician replacing the starters.']],
   },
   {
-    by: 'sam', cat: 'Other', building: 'Canteen', room: null, note: 'Vending machine by the door', impact: 'Low', created: 1.5,
+    by: 'sam', cat: 'Other', building: 'Block S', room: null, note: 'Vending machine by the door', impact: 'Low', created: 1.5,
     title: 'Vending machine takes coins and gives nothing',
     desc: 'The drinks machine accepts coins but does not release anything and does not give the money back.',
     votes: ['ben', 'chloe', 'maria'],
@@ -133,7 +136,7 @@ const ISSUES = [
     steps: [['Acknowledged', 10, null], ['In Progress', 8.5, null], ['Resolved', 6.5, 'Tripped breaker reset and the circuit checked.']],
   },
   {
-    by: 'nadia', cat: 'Cleanliness', building: 'Canteen', room: null, note: 'Bins outside the main entrance', impact: 'Low', created: 9,
+    by: 'nadia', cat: 'Cleanliness', building: 'Block S', room: null, note: 'Bins outside the main entrance', impact: 'Low', created: 9,
     title: 'Bins overflowing outside the canteen',
     desc: 'The bins by the entrance have been overflowing since lunchtime and rubbish is blowing across the courtyard.',
     votes: ['alice', 'sam', 'maria'],
@@ -154,7 +157,7 @@ const ISSUES = [
     steps: [['Acknowledged', 7.6, null], ['In Progress', 7, null], ['Resolved', 5.5, 'Washer replaced.']],
   },
   {
-    by: 'chloe', cat: 'Computers & IT', building: 'Library', room: null, note: 'Ground floor print station', impact: 'Low', created: 7,
+    by: 'chloe', cat: 'Computers & IT', building: 'MRC Library', room: null, note: 'Ground floor print station', impact: 'Low', created: 7,
     title: 'Printer is out of toner',
     desc: 'The black and white printer prints blank pages and shows a toner warning.',
     votes: [],
@@ -183,7 +186,7 @@ function daysAgo(days) {
 
 const seed = transaction(() => {
   // Children before parents, so foreign keys are never left dangling.
-  for (const table of ['user_badges', 'point_events', 'status_history', 'upvotes', 'issues', 'categories', 'users']) {
+  for (const table of ['user_badges', 'point_events', 'comments', 'status_history', 'upvotes', 'issues', 'categories', 'departments', 'users']) {
     db.exec(`DELETE FROM ${table}`);
   }
 
@@ -192,6 +195,7 @@ const seed = transaction(() => {
   for (const [name, icon] of CATEGORIES) {
     categoryIds[name] = Number(insertCategory.run(name, icon).lastInsertRowid);
   }
+  syncDepartments();
 
   const insertUser = db.prepare('INSERT INTO users (name, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)');
   const userIds = {};
@@ -208,6 +212,7 @@ const seed = transaction(() => {
     'INSERT INTO status_history (issue_id, old_status, new_status, changed_by, note, changed_at) VALUES (?, ?, ?, ?, ?, ?)'
   );
   const insertUpvote = db.prepare('INSERT INTO upvotes (user_id, issue_id, created_at) VALUES (?, ?, ?)');
+  const insertComment = db.prepare('INSERT INTO comments (issue_id, user_id, body, created_at) VALUES (?, ?, ?, ?)');
 
   for (const item of ISSUES) {
     const reporter = userIds[item.by];
@@ -241,6 +246,10 @@ const seed = transaction(() => {
       if (status === 'Resolved') award(reporter, POINTS.REPORT_RESOLVED, 'Your report was resolved', issueId, changedAt);
       previous = status;
     }
+
+    for (const [who, text, when] of item.comments || []) {
+      insertComment.run(issueId, userIds[who], text, daysAgo(when));
+    }
   }
 
   for (const student of STUDENTS) checkBadges(userIds[student.key]);
@@ -259,7 +268,7 @@ module.exports = { seed, seedIfEmpty, ADMIN, STUDENTS };
 if (require.main === module) {
   seed();
   console.log('Demo data loaded:');
-  for (const table of ['users', 'categories', 'issues', 'upvotes', 'status_history', 'point_events', 'user_badges']) {
+  for (const table of ['users', 'departments', 'categories', 'issues', 'upvotes', 'comments', 'status_history', 'point_events', 'user_badges']) {
     console.log(`  ${table.padEnd(15)} ${db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n} rows`);
   }
   console.log(`\nAdmin:    ${ADMIN.email} / ${ADMIN.password}`);

@@ -8,15 +8,15 @@ const multer = require('multer');
 const { db, transaction } = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { HttpError } = require('../middleware/errors');
-const { issueSchema, parse } = require('../validation');
-const { STATUSES } = require('../config');
+const { issueSchema, commentSchema, parse } = require('../validation');
+const { STATUSES, BUILDINGS } = require('../config');
 const { POINTS, award, checkBadges } = require('../gamification');
 
 const router = express.Router();
 router.use(requireAuth);
 
 // ---------- photo uploads ----------
-const UPLOAD_DIR = path.join(__dirname, '..', '..', 'uploads');
+const { UPLOAD_DIR } = require('../config');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const IMAGE_TYPES = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/heic': '.heic' };
@@ -41,11 +41,16 @@ const ISSUE_SELECT = `
   SELECT i.*,
          c.name AS category_name,
          c.icon AS category_icon,
+         d.id AS department_id,
+         d.name AS department_name,
+         d.icon AS department_icon,
          u.name AS reporter_name,
          (SELECT COUNT(*) FROM upvotes v WHERE v.issue_id = i.id) AS upvotes,
+         (SELECT COUNT(*) FROM comments m WHERE m.issue_id = i.id) AS comment_count,
          EXISTS (SELECT 1 FROM upvotes v WHERE v.issue_id = i.id AND v.user_id = ?) AS has_upvoted
   FROM issues i
   JOIN categories c ON c.id = i.category_id
+  LEFT JOIN departments d ON d.id = c.department_id
   JOIN users u ON u.id = i.reporter_id`;
 
 function toIssue(row, userId) {
@@ -62,8 +67,10 @@ function toIssue(row, userId) {
     created_at: row.created_at,
     updated_at: row.updated_at,
     category: { id: row.category_id, name: row.category_name, icon: row.category_icon },
+    department: row.department_id ? { id: row.department_id, name: row.department_name, icon: row.department_icon } : null,
     reporter: { id: row.reporter_id, name: row.reporter_name },
     upvotes: row.upvotes,
+    commentCount: row.comment_count,
     hasUpvoted: Boolean(row.has_upvoted),
     isMine: row.reporter_id === userId,
   };
@@ -88,7 +95,7 @@ router.get('/categories', (req, res) => {
 // Feed with optional filters. Every value from the user is passed as a bound
 // parameter (the ? marks), so it can never be run as SQL.
 router.get('/issues', (req, res) => {
-  const { status, category, q, mine, sort } = req.query;
+  const { status, category, department, building, q, mine, sort } = req.query;
   const where = [];
   const params = [req.user.id];
 
@@ -102,6 +109,17 @@ router.get('/issues', (req, res) => {
     if (!Number.isInteger(categoryId)) throw new HttpError(400, 'Category filter must be a number.');
     where.push('i.category_id = ?');
     params.push(categoryId);
+  }
+  if (department) {
+    const departmentId = Number(department);
+    if (!Number.isInteger(departmentId)) throw new HttpError(400, 'Department filter must be a number.');
+    where.push('c.department_id = ?');
+    params.push(departmentId);
+  }
+  if (building) {
+    if (!BUILDINGS.includes(building)) throw new HttpError(400, 'Unknown building filter.');
+    where.push('i.building = ?');
+    params.push(building);
   }
   if (typeof q === 'string' && q.trim()) {
     const like = `%${q.trim().replace(/[\\%_]/g, '\\$&')}%`;
@@ -150,12 +168,40 @@ router.get('/issues/:id', (req, res) => {
 
   const history = db
     .prepare(
-      `SELECT h.id, h.old_status, h.new_status, h.note, h.changed_at, u.name AS changed_by_name, u.role AS changed_by_role
+      `SELECT h.id, h.old_status, h.new_status, h.note, h.photo_path, h.changed_at, u.name AS changed_by_name, u.role AS changed_by_role
        FROM status_history h JOIN users u ON u.id = h.changed_by
        WHERE h.issue_id = ? ORDER BY h.id`
     )
     .all(id);
-  res.json({ ...issue, history });
+  res.json({ ...issue, history, comments: listComments(id, req.user.id) });
+});
+
+function listComments(issueId, userId) {
+  return db
+    .prepare(
+      `SELECT m.id, m.body, m.created_at, u.id AS user_id, u.name AS user_name, u.role AS user_role
+       FROM comments m JOIN users u ON u.id = m.user_id
+       WHERE m.issue_id = ? ORDER BY m.id`
+    )
+    .all(issueId)
+    .map((row) => ({
+      id: row.id,
+      body: row.body,
+      created_at: row.created_at,
+      user: { id: row.user_id, name: row.user_name, role: row.user_role },
+      isMine: row.user_id === userId,
+    }));
+}
+
+// Anyone logged in can comment: students add details, staff explain what is happening.
+router.post('/issues/:id/comments', (req, res) => {
+  const id = issueIdFrom(req);
+  const { body } = parse(commentSchema, req.body);
+  const issue = db.prepare('SELECT id FROM issues WHERE id = ?').get(id);
+  if (!issue) throw new HttpError(404, 'This report does not exist.');
+
+  db.prepare('INSERT INTO comments (issue_id, user_id, body) VALUES (?, ?, ?)').run(id, req.user.id, body);
+  res.status(201).json({ comments: listComments(id, req.user.id) });
 });
 
 const createIssue = transaction((user, data, photoPath) => {
@@ -242,6 +288,7 @@ router.delete('/issues/:id/upvote', (req, res) => {
 });
 
 module.exports = router;
+module.exports.upload = upload;
 module.exports.ISSUE_SELECT = ISSUE_SELECT;
 module.exports.toIssue = toIssue;
 module.exports.getIssue = getIssue;

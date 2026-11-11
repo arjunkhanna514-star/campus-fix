@@ -1,12 +1,18 @@
-// The small building blocks every screen is made from: text, buttons,
-// chips, inputs and the page frame. Keeping them here keeps the look consistent.
+// The building blocks every screen is made from: text, buttons, chips,
+// inputs, glass cards and the page frame. Each control answers a touch:
+// it presses in, springs back and gives a small vibration.
 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import React from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   ColorValue,
+  Easing,
+  LayoutChangeEvent,
   Pressable,
+  PressableProps,
   StyleProp,
   StyleSheet,
   Text,
@@ -18,7 +24,12 @@ import {
   ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { fonts, MAX_WIDTH, radius, space, useTheme } from '../theme';
+import { haptics } from '../haptics';
+import { fonts, MAX_WIDTH, motion, radius, space, useTheme } from '../theme';
+import { GlassBlur, GlassEdge, GlassFill, Sheen } from './Glass';
+import { Wallpaper } from './Wallpaper';
+import { Mascot, Mood } from './Mascot';
+import { useForever, wave } from '../motion';
 
 export type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
@@ -29,12 +40,12 @@ export function Icon({ name, size = 20, color }: { name: IconName | string; size
 
 // ---------- text ----------
 const TYPE = {
-  display: { fontFamily: fonts.headBold, fontSize: 30, lineHeight: 34 },
-  title: { fontFamily: fonts.headBold, fontSize: 23, lineHeight: 28 },
-  heading: { fontFamily: fonts.head, fontSize: 18, lineHeight: 23 },
-  body: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22 },
-  bodyBold: { fontFamily: fonts.bodyBold, fontSize: 15, lineHeight: 22 },
-  small: { fontFamily: fonts.bodyMedium, fontSize: 13, lineHeight: 18 },
+  display: { fontFamily: fonts.headBold, fontSize: 32, lineHeight: 36 },
+  title: { fontFamily: fonts.headBold, fontSize: 26, lineHeight: 31 },
+  heading: { fontFamily: fonts.head, fontSize: 19, lineHeight: 24 },
+  body: { fontFamily: fonts.body, fontSize: 15.5, lineHeight: 22 },
+  bodyBold: { fontFamily: fonts.bodyBold, fontSize: 15.5, lineHeight: 22 },
+  small: { fontFamily: fonts.bodyMedium, fontSize: 13.5, lineHeight: 18 },
   micro: { fontFamily: fonts.bodyMedium, fontSize: 12, lineHeight: 16 },
   number: { fontFamily: fonts.headBold, fontSize: 20, lineHeight: 24 },
 } satisfies Record<string, TextStyle>;
@@ -48,11 +59,13 @@ export function Txt({ variant = 'body', tone = 'ink', color, style, ...rest }: T
 }
 
 // ---------- page frame ----------
-// Keeps content inside the safe area and centred at a readable width on tablets and laptops.
-export function Screen({ children, edges = ['top'] }: { children: React.ReactNode; edges?: ('top' | 'bottom')[] }) {
+// Ambient light behind, safe area respected, content centred at a readable width.
+// "plain" leaves the wallpaper out (the map uses it, so nothing shows through).
+export function Screen({ children, edges = ['top'], plain = false }: { children: React.ReactNode; edges?: ('top' | 'bottom')[]; plain?: boolean }) {
   const { c } = useTheme();
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
+      {plain ? null : <Wallpaper />}
       <SafeAreaView edges={edges} style={{ flex: 1 }}>
         <View style={styles.frame}>{children}</View>
       </SafeAreaView>
@@ -60,9 +73,70 @@ export function Screen({ children, edges = ['top'] }: { children: React.ReactNod
   );
 }
 
+// A pane of glass: translucent fill, hairline border, bright top edge.
 export function Card({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
   const { c } = useTheme();
-  return <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.line }, style]}>{children}</View>;
+  const flat = StyleSheet.flatten(style) || {};
+  const r = typeof flat.borderRadius === 'number' ? flat.borderRadius : radius.lg;
+  return (
+    <View style={[styles.card, { backgroundColor: 'rgba(74,74,92,0.46)', borderColor: c.line, borderTopColor: c.lineStrong }, style]}>
+      <GlassBlur radius={r} />
+      <GlassFill radius={r} />
+      <GlassEdge radius={r} />
+      {children}
+    </View>
+  );
+}
+
+// ---------- press feedback ----------
+// Wraps anything pressable: it sinks slightly while held and springs back.
+// Size and placement (flex, width, margins, position) go on the outer touch
+// area so the button lays out like a plain View; the look goes on the part that scales.
+const OUTER_KEYS = ['flex', 'flexGrow', 'flexShrink', 'flexBasis', 'alignSelf', 'width', 'minWidth', 'maxWidth', 'margin', 'marginHorizontal', 'marginVertical', 'marginTop', 'marginBottom', 'marginLeft', 'marginRight', 'position', 'top', 'left', 'right', 'bottom', 'zIndex'] as const;
+function splitStyle(style: StyleProp<ViewStyle>) {
+  const flat = (StyleSheet.flatten(style) || {}) as Record<string, unknown>;
+  const outer: Record<string, unknown> = {};
+  const inner: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(flat)) ((OUTER_KEYS as readonly string[]).includes(key) ? outer : inner)[key] = value;
+  // A button that stretches keeps its look filling the stretched area.
+  if (outer.flex !== undefined || outer.flexGrow !== undefined) inner.flexGrow = 1;
+  return { outer: outer as ViewStyle, inner: inner as ViewStyle };
+}
+
+export function PressableScale({
+  children,
+  style,
+  scaleTo = 0.96,
+  feedback = 'tap',
+  onPress,
+  disabled,
+  ...rest
+}: PressableProps & { style?: StyleProp<ViewStyle>; scaleTo?: number; feedback?: 'tap' | 'select' | 'impact' | 'none'; children: React.ReactNode }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const to = (value: number, config: { speed: number; bounciness: number }) =>
+    Animated.spring(scale, { toValue: value, useNativeDriver: true, ...config }).start();
+  const { outer, inner } = splitStyle(style);
+
+  return (
+    <Pressable
+      {...rest}
+      style={outer}
+      disabled={disabled}
+      onPressIn={(e) => {
+        to(scaleTo, motion.press);
+        rest.onPressIn?.(e);
+      }}
+      onPressOut={(e) => {
+        to(1, motion.release);
+        rest.onPressOut?.(e);
+      }}
+      onPress={(e) => {
+        if (feedback !== 'none') haptics[feedback]();
+        onPress?.(e);
+      }}>
+      <Animated.View style={[inner, { transform: [{ scale }] }]}>{children}</Animated.View>
+    </Pressable>
+  );
 }
 
 // ---------- buttons ----------
@@ -81,26 +155,35 @@ type ButtonProps = {
 export function Button({ label, onPress, variant = 'primary', icon, loading, disabled, small, style, accessibilityLabel }: ButtonProps) {
   const { c } = useTheme();
   const off = disabled || loading;
+  const [width, setWidth] = useState(0);
   const colours = {
-    primary: { bg: c.tag, pressed: c.tagPressed, fg: c.tagInk, border: c.tag },
-    outline: { bg: 'transparent', pressed: c.surfaceAlt, fg: c.ink, border: c.ink },
-    quiet: { bg: 'transparent', pressed: c.surfaceAlt, fg: c.ink, border: 'transparent' },
-    danger: { bg: 'transparent', pressed: c.dangerSoft, fg: c.danger, border: c.danger },
+    primary: { bg: c.tag, fg: c.tagInk, border: c.tag },
+    outline: { bg: c.surface, fg: c.ink, border: c.lineStrong },
+    quiet: { bg: 'transparent', fg: c.ink, border: 'transparent' },
+    danger: { bg: c.dangerSoft, fg: c.danger, border: 'rgba(255,122,114,0.35)' },
   }[variant];
 
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       disabled={off}
+      feedback={variant === 'primary' ? 'impact' : 'tap'}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled: !!off, busy: !!loading }}
-      style={({ pressed }) => [
+      style={[
         styles.button,
         small && styles.buttonSmall,
-        { backgroundColor: pressed ? colours.pressed : colours.bg, borderColor: colours.border, opacity: off ? 0.5 : 1 },
+        { backgroundColor: colours.bg, borderColor: colours.border, opacity: off ? 0.5 : 1 },
         style,
       ]}>
+      <View style={StyleSheet.absoluteFill} pointerEvents="none" onLayout={(e) => setWidth(e.nativeEvent.layout.width)} />
+      {variant === 'outline' ? <GlassEdge radius={small ? radius.md : radius.pill} /> : null}
+      {variant === 'primary' ? (
+        // Polished silver: white at the top, a soft lavender sheen low down and a hint of blue at the edge.
+        <LinearGradient pointerEvents="none" colors={['#FFFFFF', '#ECEAF8', '#C9C6E4', '#B9C8FF']} locations={[0, 0.45, 0.8, 1]} style={StyleSheet.absoluteFill} />
+      ) : null}
+      {variant === 'primary' && !off ? <Sheen width={width} strength={0.9} /> : null}
       {loading ? (
         <ActivityIndicator size="small" color={colours.fg} />
       ) : (
@@ -111,21 +194,23 @@ export function Button({ label, onPress, variant = 'primary', icon, loading, dis
           </Text>
         </>
       )}
-    </Pressable>
+    </PressableScale>
   );
 }
 
-export function IconButton({ name, onPress, label, color }: { name: IconName; onPress: () => void; label: string; color?: string }) {
+export function IconButton({ name, onPress, label, color, glass }: { name: IconName; onPress: () => void; label: string; color?: string; glass?: boolean }) {
   const { c } = useTheme();
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
       hitSlop={6}
-      style={({ pressed }) => [styles.iconButton, { backgroundColor: pressed ? c.surfaceAlt : 'transparent' }]}>
+      scaleTo={0.9}
+      style={[styles.iconButton, glass && { backgroundColor: c.surface, borderWidth: 1, borderColor: c.line }]}>
+      {glass ? <GlassEdge radius={24} /> : null}
       <Icon name={name} size={22} color={color ?? c.ink} />
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -134,38 +219,59 @@ type ChipProps = { label: string; selected?: boolean; onPress?: () => void; icon
 
 export function Chip({ label, selected, onPress, icon, count }: ChipProps) {
   const { c } = useTheme();
-  const fg = selected ? c.bg : c.ink;
+  const fg = selected ? c.tagInk : c.ink;
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
+      feedback="select"
       accessibilityRole="button"
       accessibilityState={{ selected: !!selected }}
       accessibilityLabel={count === undefined ? label : `${label}, ${count}`}
-      style={({ pressed }) => [
-        styles.chip,
-        { backgroundColor: selected ? c.ink : pressed ? c.surfaceAlt : c.surface, borderColor: selected ? c.ink : c.line },
-      ]}>
+      style={[styles.chip, { backgroundColor: selected ? c.tag : c.surface, borderColor: selected ? c.tag : c.line }]}>
       {icon ? <Icon name={icon} size={16} color={fg} /> : null}
       <Text style={[styles.chipText, { color: fg }]}>{label}</Text>
-      {count === undefined ? null : <Text style={[styles.chipCount, { color: selected ? c.bg : c.inkFaint }]}>{count}</Text>}
-    </Pressable>
+      {count === undefined ? null : <Text style={[styles.chipCount, { color: selected ? c.tagInk : c.inkFaint }]}>{count}</Text>}
+    </PressableScale>
   );
 }
 
+// A glass track with a white thumb that slides to the chosen option.
 export function Segmented<T extends string>({ options, value, onChange }: { options: { value: T; label: string }[]; value: T; onChange: (value: T) => void }) {
   const { c } = useTheme();
+  const [width, setWidth] = useState(0);
+  const index = Math.max(0, options.findIndex((option) => option.value === value));
+  const x = useRef(new Animated.Value(index)).current;
+
+  useEffect(() => {
+    Animated.spring(x, { toValue: index, useNativeDriver: true, damping: 20, stiffness: 260, mass: 0.8 }).start();
+  }, [index, x]);
+
+  const thumb = width > 0 ? (width - 6) / options.length : 0;
+
   return (
-    <View style={[styles.segmented, { backgroundColor: c.surfaceAlt }]} accessibilityRole="tablist">
+    <View
+      style={[styles.segmented, { backgroundColor: c.surface, borderColor: c.line }]}
+      onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}
+      accessibilityRole="tablist">
+      {thumb > 0 ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.thumb, { width: thumb, backgroundColor: c.tag, transform: [{ translateX: x.interpolate({ inputRange: [0, 1], outputRange: [0, thumb] }) }] }]}
+        />
+      ) : null}
       {options.map((option) => {
         const active = option.value === value;
         return (
           <Pressable
             key={option.value}
-            onPress={() => onChange(option.value)}
+            onPress={() => {
+              if (!active) haptics.select();
+              onChange(option.value);
+            }}
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
-            style={[styles.segment, active && { backgroundColor: c.surface, borderColor: c.line }]}>
-            <Text style={[styles.segmentText, { color: active ? c.ink : c.inkSoft, fontFamily: active ? fonts.bodyBold : fonts.bodyMedium }]} numberOfLines={1}>
+            style={styles.segment}>
+            <Text style={[styles.segmentText, { color: active ? c.tagInk : c.inkSoft, fontFamily: active ? fonts.bodyBold : fonts.bodyMedium }]} numberOfLines={1}>
               {option.label}
             </Text>
           </Pressable>
@@ -189,7 +295,7 @@ export function Field({ label, error, hint, right, style, multiline, ...rest }: 
       <View
         style={[
           styles.inputWrap,
-          { backgroundColor: c.surface, borderColor: error ? c.danger : focused ? c.ink : c.line, borderWidth: focused || error ? 2 : 1 },
+          { backgroundColor: focused ? c.surfaceAlt : c.surface, borderColor: error ? c.danger : focused ? c.ink : c.line, borderWidth: focused || error ? 1.5 : 1 },
           multiline && { alignItems: 'flex-start' },
         ]}>
         <TextInput
@@ -197,7 +303,8 @@ export function Field({ label, error, hint, right, style, multiline, ...rest }: 
           multiline={multiline}
           accessibilityLabel={label}
           placeholderTextColor={c.inkFaint}
-          selectionColor={c.tagPressed}
+          selectionColor={c.ink}
+          cursorColor={c.ink}
           onFocus={(e) => {
             setFocused(true);
             rest.onFocus?.(e);
@@ -224,14 +331,19 @@ export function Field({ label, error, hint, right, style, multiline, ...rest }: 
 }
 
 // ---------- states ----------
-export function EmptyState({ icon, title, body, action }: { icon: IconName; title: string; body: string; action?: React.ReactNode }) {
-  const { c } = useTheme();
+const MOOD_FOR_ICON: Record<string, Mood> = {
+  'text-box-search-outline': 'curious',
+  'flag-outline': 'sleepy',
+  'trophy-outline': 'proud',
+  'map-marker-outline': 'sad',
+  'check-circle': 'happy',
+};
+
+export function EmptyState({ icon, title, body, action, mood }: { icon: IconName; title: string; body: string; action?: React.ReactNode; mood?: Mood }) {
   return (
     <View style={styles.empty}>
-      <View style={[styles.emptyIcon, { backgroundColor: c.surfaceAlt }]}>
-        <Icon name={icon} size={26} color={c.inkSoft} />
-      </View>
-      <Txt variant="heading" style={{ textAlign: 'center' }}>
+      <Mascot mood={mood ?? MOOD_FOR_ICON[icon] ?? 'happy'} size={84} />
+      <Txt variant="heading" style={{ textAlign: 'center', marginTop: space.sm }}>
         {title}
       </Txt>
       <Txt tone="soft" style={{ textAlign: 'center', maxWidth: 320 }}>
@@ -246,7 +358,7 @@ export function Notice({ text, tone = 'danger' }: { text: string; tone?: 'danger
   const { c } = useTheme();
   const danger = tone === 'danger';
   return (
-    <View style={[styles.notice, { backgroundColor: danger ? c.dangerSoft : c.tagSoft }]} accessibilityRole="alert">
+    <View style={[styles.notice, { backgroundColor: danger ? c.dangerSoft : c.tagSoft, borderColor: danger ? 'rgba(255,122,114,0.3)' : c.line }]} accessibilityRole="alert">
       <Icon name={danger ? 'alert-circle-outline' : 'information-outline'} size={18} color={danger ? c.danger : c.ink} />
       <Txt variant="small" color={danger ? c.danger : c.ink} style={{ flex: 1 }}>
         {text}
@@ -255,11 +367,36 @@ export function Notice({ text, tone = 'danger' }: { text: string; tone?: 'danger
   );
 }
 
-export function Loading() {
-  const { c } = useTheme();
+export function Loading({ label = 'Loading' }: { label?: string }) {
   return (
-    <View style={styles.loading}>
-      <ActivityIndicator size="large" color={c.inkSoft} />
+    <View style={styles.loading} accessibilityLabel={label}>
+      <Mascot mood="curious" size={64} />
+      <Txt variant="small" tone="soft" style={{ marginTop: space.sm }}>
+        {label}
+      </Txt>
+    </View>
+  );
+}
+
+// Placeholder cards that pulse while a list loads, so the layout does not jump.
+export function Skeleton({ rows = 4, height = 112 }: { rows?: number; height?: number }) {
+  const { c } = useTheme();
+  const pulse = wave(useForever(1400));
+  return (
+    <View style={{ gap: space.md }} accessibilityLabel="Loading">
+      {Array.from({ length: rows }, (_, i) => (
+        <Animated.View
+          key={i}
+          style={{
+            height,
+            borderRadius: radius.lg,
+            borderWidth: 1,
+            borderColor: c.line,
+            backgroundColor: c.surface,
+            opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.45, 1] }),
+          }}
+        />
+      ))}
     </View>
   );
 }
@@ -267,7 +404,17 @@ export function Loading() {
 export function Avatar({ text, size = 40, highlight }: { text: string; size?: number; highlight?: boolean }) {
   const { c } = useTheme();
   return (
-    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: highlight ? c.tag : c.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}>
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: highlight ? c.tag : c.surfaceAlt,
+        borderWidth: highlight ? 0 : 1,
+        borderColor: c.line,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
       <Text style={{ fontFamily: fonts.headBold, fontSize: size * 0.4, color: highlight ? c.tagInk : c.ink }}>{text}</Text>
     </View>
   );
@@ -275,24 +422,25 @@ export function Avatar({ text, size = 40, highlight }: { text: string; size?: nu
 
 const styles = StyleSheet.create({
   frame: { flex: 1, width: '100%', maxWidth: MAX_WIDTH, alignSelf: 'center' },
-  card: { borderRadius: radius.lg, borderWidth: 1, padding: space.lg },
+  card: { borderRadius: radius.lg, borderWidth: 1, padding: space.lg, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 18, shadowOffset: { width: 0, height: 8 } },
   button: {
-    minHeight: 50,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    paddingHorizontal: space.lg,
+    minHeight: 52,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    paddingHorizontal: space.xl,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: space.sm,
+    overflow: 'hidden',
   },
-  buttonSmall: { minHeight: 40, paddingHorizontal: space.md, borderRadius: radius.sm },
+  buttonSmall: { minHeight: 42, paddingHorizontal: space.lg, borderRadius: radius.md },
   buttonText: { fontFamily: fonts.bodyBold, fontSize: 16 },
   buttonTextSmall: { fontFamily: fonts.bodyBold, fontSize: 14 },
-  iconButton: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  iconButton: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   chip: {
     minHeight: 40,
-    paddingHorizontal: 14,
+    paddingHorizontal: 15,
     borderRadius: radius.pill,
     borderWidth: 1,
     flexDirection: 'row',
@@ -301,13 +449,13 @@ const styles = StyleSheet.create({
   },
   chipText: { fontFamily: fonts.bodyMedium, fontSize: 14 },
   chipCount: { fontFamily: fonts.bodyBold, fontSize: 13 },
-  segmented: { flexDirection: 'row', borderRadius: radius.md, padding: 3 },
-  segment: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm + 1, borderWidth: 1, borderColor: 'transparent', paddingHorizontal: 6 },
+  segmented: { flexDirection: 'row', borderRadius: radius.pill, padding: 3, borderWidth: 1 },
+  thumb: { position: 'absolute', top: 3, bottom: 3, left: 3, borderRadius: radius.pill },
+  segment: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
   segmentText: { fontSize: 14 },
-  inputWrap: { borderRadius: radius.md, flexDirection: 'row', alignItems: 'center', minHeight: 50 },
+  inputWrap: { borderRadius: radius.md, flexDirection: 'row', alignItems: 'center', minHeight: 52 },
   input: { flex: 1, fontFamily: fonts.body, fontSize: 16, paddingHorizontal: 14, paddingVertical: 10, outlineWidth: 0 } as TextStyle,
   empty: { alignItems: 'center', gap: space.sm, paddingVertical: space.xxl, paddingHorizontal: space.xl },
-  emptyIcon: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: space.xs },
-  notice: { flexDirection: 'row', gap: space.sm, alignItems: 'flex-start', padding: space.md, borderRadius: radius.md },
+  notice: { flexDirection: 'row', gap: space.sm, alignItems: 'flex-start', padding: space.md, borderRadius: radius.md, borderWidth: 1 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: space.xxl },
 });

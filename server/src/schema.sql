@@ -14,10 +14,19 @@ CREATE TABLE IF NOT EXISTS users (
   created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
-CREATE TABLE IF NOT EXISTS categories (
+-- The team that fixes a kind of problem. Students never pick it: it follows
+-- from the category, so a student cannot assign responsibility.
+CREATE TABLE IF NOT EXISTS departments (
   id   INTEGER PRIMARY KEY,
   name TEXT NOT NULL UNIQUE,
   icon TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS categories (
+  id            INTEGER PRIMARY KEY,
+  name          TEXT NOT NULL UNIQUE,
+  icon          TEXT NOT NULL,
+  department_id INTEGER REFERENCES departments(id)
 );
 
 CREATE TABLE IF NOT EXISTS issues (
@@ -51,7 +60,18 @@ CREATE TABLE IF NOT EXISTS status_history (
   new_status TEXT    NOT NULL,
   changed_by INTEGER NOT NULL REFERENCES users(id),
   note       TEXT,
+  photo_path TEXT,                          -- the admin's "after" photo, only on Resolved
   changed_at TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Conversation on a report. Students add details, staff reply.
+-- Comments earn no points, so they cannot be used to farm the leaderboard.
+CREATE TABLE IF NOT EXISTS comments (
+  id         INTEGER PRIMARY KEY,
+  issue_id   INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+  user_id    INTEGER NOT NULL REFERENCES users(id),
+  body       TEXT    NOT NULL CHECK (length(body) BETWEEN 1 AND 500),
+  created_at TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
 -- Points ledger. A user's score is never stored; it is always SUM(amount).
@@ -78,3 +98,4 @@ CREATE INDEX IF NOT EXISTS idx_issues_reporter ON issues(reporter_id);
 CREATE INDEX IF NOT EXISTS idx_upvotes_issue   ON upvotes(issue_id);
 CREATE INDEX IF NOT EXISTS idx_points_user     ON point_events(user_id);
 CREATE INDEX IF NOT EXISTS idx_history_issue   ON status_history(issue_id);
+CREATE INDEX IF NOT EXISTS idx_comments_issue  ON comments(issue_id);

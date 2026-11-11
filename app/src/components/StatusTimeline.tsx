@@ -2,7 +2,8 @@
 // happened and any note the admin left.
 
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
+import { photoUrl } from '../api';
 import { dateTime } from '../format';
 import { radius, space, useTheme } from '../theme';
 import { HistoryEntry, Status, STATUSES } from '../types';
@@ -56,6 +57,13 @@ export function StatusTimeline({ history, current }: { history: HistoryEntry[]; 
                   <Txt variant="small">{entry.note}</Txt>
                 </View>
               ) : null}
+              {entry?.photo_path && photoUrl(entry.photo_path) ? (
+                <Image
+                  source={{ uri: photoUrl(entry.photo_path) as string }}
+                  style={[styles.fixPhoto, { backgroundColor: c.surfaceAlt }]}
+                  accessibilityLabel="Photo of the fix"
+                />
+              ) : null}
             </View>
           </View>
         );
@@ -71,4 +79,5 @@ const styles = StyleSheet.create({
   line: { width: 2, flex: 1, minHeight: 14, marginVertical: 2, borderRadius: 1 },
   content: { flex: 1, paddingTop: 3, gap: 2 },
   note: { marginTop: 6, padding: space.md, borderRadius: radius.sm },
+  fixPhoto: { marginTop: 8, width: 140, height: 96, borderRadius: radius.sm },
 });

@@ -1,8 +1,9 @@
 // The upvote control. It updates the number straight away (so it feels
 // instant), sends the request, and puts the old number back if the server says no.
 
-import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { haptics } from '../haptics';
 import { api, errorMessage } from '../api';
 import { useAuth } from '../auth';
 import { useSession } from '../session';
@@ -35,11 +36,13 @@ export function useUpvote(issue: Issue, onChange: (issue: Issue) => void) {
   const toggle = async () => {
     if (busy) return;
     if (blocked) {
+      haptics.error();
       show({ kind: 'info', title: blocked, icon: 'information-outline' });
       return;
     }
     const before = issue;
     const voting = !issue.hasUpvoted;
+    haptics.impact();
     onChange({ ...issue, hasUpvoted: voting, upvotes: issue.upvotes + (voting ? 1 : -1) });
     setBusy(true);
     try {
@@ -61,6 +64,18 @@ export function UpvoteButton({ issue, onChange, variant = 'stub' }: Props) {
   const { c } = useTheme();
   const { toggle, blocked } = useUpvote(issue, onChange);
   const voted = issue.hasUpvoted;
+
+  // The arrow and number pop when the vote changes, so the tap clearly landed.
+  const pop = useRef(new Animated.Value(1)).current;
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    pop.setValue(0.7);
+    Animated.spring(pop, { toValue: 1, useNativeDriver: true, damping: 7, stiffness: 260 }).start();
+  }, [voted, pop]);
   const dimmed = !!blocked && !voted;
 
   const label = voted
@@ -76,9 +91,11 @@ export function UpvoteButton({ issue, onChange, variant = 'stub' }: Props) {
         accessibilityState={{ selected: voted, disabled: dimmed }}
         style={({ pressed }) => [
           styles.wide,
-          { backgroundColor: voted ? c.tag : pressed ? c.surfaceAlt : c.surface, borderColor: voted ? c.tag : c.ink, opacity: dimmed ? 0.55 : 1 },
+          { backgroundColor: voted ? c.tag : pressed ? c.surfaceAlt : c.surface, borderColor: voted ? c.tag : c.lineStrong, opacity: dimmed ? 0.55 : 1 },
         ]}>
-        <Icon name={voted ? 'arrow-up-bold' : 'arrow-up-bold-outline'} size={22} color={voted ? c.tagInk : c.ink} />
+        <Animated.View style={{ transform: [{ scale: pop }] }}>
+          <Icon name={voted ? 'arrow-up-bold' : 'arrow-up-bold-outline'} size={22} color={voted ? c.tagInk : c.ink} />
+        </Animated.View>
         <Text style={[styles.wideText, { color: voted ? c.tagInk : c.ink }]}>{voted ? 'You upvoted this' : "I'm affected too"}</Text>
       </Pressable>
     );
@@ -92,10 +109,10 @@ export function UpvoteButton({ issue, onChange, variant = 'stub' }: Props) {
       accessibilityState={{ selected: voted, disabled: dimmed }}
       hitSlop={4}
       style={({ pressed }) => [styles.stub, { backgroundColor: voted ? c.tag : pressed ? c.surfaceAlt : 'transparent' }]}>
-      <View style={{ opacity: dimmed ? 0.45 : 1, alignItems: 'center' }}>
+      <Animated.View style={{ opacity: dimmed ? 0.45 : 1, alignItems: 'center', transform: [{ scale: pop }] }}>
         <Icon name={voted ? 'arrow-up-bold' : 'arrow-up-bold-outline'} size={22} color={voted ? c.tagInk : c.ink} />
         <Text style={[styles.count, { color: voted ? c.tagInk : c.ink }]}>{issue.upvotes}</Text>
-      </View>
+      </Animated.View>
     </Pressable>
   );
 }
@@ -103,6 +120,6 @@ export function UpvoteButton({ issue, onChange, variant = 'stub' }: Props) {
 const styles = StyleSheet.create({
   stub: { width: 60, alignSelf: 'stretch', minHeight: 64, alignItems: 'center', justifyContent: 'center' },
   count: { fontFamily: fonts.headBold, fontSize: 19, lineHeight: 22, marginTop: 1 },
-  wide: { minHeight: 50, borderRadius: radius.md, borderWidth: 1.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 },
+  wide: { minHeight: 52, borderRadius: radius.pill, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 },
   wideText: { fontFamily: fonts.bodyBold, fontSize: 16 },
 });

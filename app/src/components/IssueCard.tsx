@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { photoUrl } from '../api';
+import { useT } from '../i18n';
 import { timeAgo, whereText } from '../format';
 import { radius, space, useTheme } from '../theme';
 import type { Issue } from '../types';
@@ -22,6 +23,7 @@ type Props = {
 
 export function IssueCard({ issue, onChange, footer, fill }: Props) {
   const { c } = useTheme();
+  const t = useT();
   const photo = photoUrl(issue.photo_url);
 
   return (
@@ -43,6 +45,7 @@ export function IssueCard({ issue, onChange, footer, fill }: Props) {
           <View style={styles.topLine}>
             <Icon name={issue.category.icon} size={15} color={c.inkSoft} />
             <Txt variant="micro" tone="soft" style={{ flex: 1 }} numberOfLines={1}>
+              {issue.department ? `${t(`dept.${issue.department.name}`)}: ` : ''}
               {issue.category.name}
             </Txt>
             <Txt variant="micro" tone="faint">
@@ -72,6 +75,14 @@ export function IssueCard({ issue, onChange, footer, fill }: Props) {
                 <Icon name="alert-circle-outline" size={14} color={c.danger} />
                 <Txt variant="micro" tone="danger">
                   High impact
+                </Txt>
+              </View>
+            ) : null}
+            {issue.commentCount > 0 ? (
+              <View style={styles.flag} accessibilityLabel={`${issue.commentCount} ${issue.commentCount === 1 ? 'comment' : 'comments'}`}>
+                <Icon name="comment-outline" size={14} color={c.inkSoft} />
+                <Txt variant="micro" tone="soft">
+                  {issue.commentCount}
                 </Txt>
               </View>
             ) : null}

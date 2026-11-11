@@ -1,0 +1,21 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "npm install --prefix server --omit=dev",
+  "buildCommand": "echo Using the prebuilt web app in app/dist",
+  "outputDirectory": "app/dist",
+  "functions": {
+    "api/index.js": { "maxDuration": 15, "includeFiles": "server/src/**" }
+  },
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/index.js" },
+    { "source": "/uploads/:path*", "destination": "/api/index.js" },
+    { "source": "/get", "destination": "/api/index.js" },
+    { "source": "/qr.svg", "destination": "/api/index.js" },
+    { "source": "/share-info", "destination": "/api/index.js" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    { "source": "/sw.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }
+  ]
+}

@@ -1,16 +1,18 @@
-// Admin only. Shows the numbers, then the queue of reports ordered by
-// how many students are affected. Each card has a one-tap "next step" button.
+// Admin only. Shows the numbers, then the queue of reports grouped by the
+// department that fixes them (IT, Estates, Cleaning, Health & Safety,
+// Student Services), most upvoted first. Each card has a one-tap "next step".
 
-import { Redirect, useFocusEffect } from 'expo-router';
-import React, { useCallback, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Redirect, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { api, errorMessage } from '@/src/api';
 import { useAuth } from '@/src/auth';
 import { IssueCard } from '@/src/components/IssueCard';
 import { STATUS_ICON, STATUS_LABEL } from '@/src/components/StatusChip';
-import { Button, Card, Chip, EmptyState, Icon, Loading, Notice, Screen, Txt } from '@/src/components/ui';
-import { radius, space, useTheme } from '@/src/theme';
+import { Button, Card, Chip, EmptyState, Icon, Notice, Screen, Skeleton, Txt } from '@/src/components/ui';
+import { radius, space, TAB_CLEARANCE, useTheme } from '@/src/theme';
+import { useT } from '@/src/i18n';
 import { useToast } from '@/src/toast';
 import { AdminStats, Issue, NEXT_STATUS, Status, STATUSES } from '@/src/types';
 
@@ -30,6 +32,12 @@ export default function AdminScreen() {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [savingId, setSavingId] = useState<number | null>(null);
+  const t = useT();
+  const params = useLocalSearchParams<{ department?: string }>();
+  const [department, setDepartment] = useState<number | null>(null);
+  useEffect(() => {
+    if (params.department) setDepartment(Number(params.department));
+  }, [params.department]);
 
   const load = useCallback(async () => {
     try {
@@ -75,16 +83,30 @@ export default function AdminScreen() {
     }
   };
 
-  const visible = (issues ?? []).filter((issue) => (filter === 'Open' ? issue.status !== 'Resolved' : issue.status === filter));
+  const visible = (issues ?? [])
+    .filter((issue) => (filter === 'Open' ? issue.status !== 'Resolved' : issue.status === filter))
+    .filter((issue) => !department || issue.department?.id === department);
+
+  // With no department chosen, list the reports under a heading per department.
+  type Row = { kind: 'head'; id: number; name: string; icon: string; count: number } | { kind: 'issue'; issue: Issue };
+  const rows: Row[] = [];
+  if (department) visible.forEach((issue) => rows.push({ kind: 'issue', issue }));
+  else
+    for (const d of stats?.byDepartment ?? []) {
+      const mine = visible.filter((issue) => issue.department?.id === d.id);
+      if (!mine.length) continue;
+      rows.push({ kind: 'head', id: d.id, name: d.name, icon: d.icon, count: mine.length });
+      mine.forEach((issue) => rows.push({ kind: 'issue', issue }));
+    }
   const replaceIssue = (updated: Issue) => setIssues((list) => list?.map((item) => (item.id === updated.id ? updated : item)) ?? null);
 
   const header = (
     <View style={{ gap: space.lg, paddingBottom: space.md }}>
       <View style={{ gap: space.xs }}>
         <Txt variant="title" accessibilityRole="header">
-          Manage reports
+          {t('admin.title')}
         </Txt>
-        <Txt tone="soft">Most upvoted first, so you start with what affects the most students.</Txt>
+        <Txt tone="soft">{t('admin.sub')}</Txt>
       </View>
 
       {error ? <Notice text={error} /> : null}
@@ -125,9 +147,23 @@ export default function AdminScreen() {
         </>
       ) : null}
 
+      {stats ? (
+        <View style={{ gap: space.sm }}>
+          <Txt variant="small" tone="soft">
+            {t('filter.department')}
+          </Txt>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, paddingRight: space.lg }}>
+            <DeptTile icon="view-grid-outline" name={t('filter.allDepartments')} count={stats.open} selected={!department} onPress={() => setDepartment(null)} />
+            {stats.byDepartment.map((d) => (
+              <DeptTile key={d.id} icon={d.icon} name={t(`dept.${d.name}`)} count={d.open} selected={department === d.id} onPress={() => setDepartment(department === d.id ? null : d.id)} />
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
+
       <View style={styles.chips}>
-        <Chip label="All open" selected={filter === 'Open'} onPress={() => setFilter('Open')} count={stats?.open} />
-        <Chip label="Resolved" selected={filter === 'Resolved'} onPress={() => setFilter(filter === 'Resolved' ? 'Open' : 'Resolved')} count={stats?.byStatus.Resolved} />
+        <Chip label={t('admin.allOpen')} selected={filter === 'Open'} onPress={() => setFilter('Open')} count={stats?.open} />
+        <Chip label={t('status.Resolved')} selected={filter === 'Resolved'} onPress={() => setFilter(filter === 'Resolved' ? 'Open' : 'Resolved')} count={stats?.byStatus.Resolved} />
       </View>
     </View>
   );
@@ -135,9 +171,23 @@ export default function AdminScreen() {
   return (
     <Screen>
       <FlatList
-        data={visible}
-        keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => {
+        data={rows}
+        keyExtractor={(row) => (row.kind === 'head' ? `d${row.id}` : String(row.issue.id))}
+        renderItem={({ item: row }) => {
+          if (row.kind === 'head') {
+            return (
+              <View style={styles.groupHead} accessibilityRole="header">
+                <Icon name={row.icon} size={18} color={c.inkSoft} />
+                <Txt variant="heading" style={{ flex: 1 }}>
+                  {t(`dept.${row.name}`)}
+                </Txt>
+                <Txt variant="small" tone="soft">
+                  {row.count}
+                </Txt>
+              </View>
+            );
+          }
+          const item = row.issue;
           const next = NEXT_STATUS[item.status];
           return (
             <IssueCard
@@ -164,7 +214,7 @@ export default function AdminScreen() {
         ListEmptyComponent={
           issues === null ? (
             error ? undefined : (
-              <Loading />
+              <Skeleton rows={3} />
             )
           ) : (
             <EmptyState icon="check-circle" title={filter === 'Open' ? 'No open reports' : `Nothing is ${STATUS_LABEL[filter as Status].toLowerCase()}`} body="When students report or staff update a problem, it appears here." />
@@ -174,6 +224,28 @@ export default function AdminScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={pullToRefresh} tintColor={c.inkSoft} colors={[c.ink]} />}
       />
     </Screen>
+  );
+}
+
+function DeptTile({ icon, name, count, selected, onPress }: { icon: string; name: string; count: number; selected: boolean; onPress: () => void }) {
+  const { c } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`${name}, ${count}`}
+      style={[styles.dept, { backgroundColor: selected ? c.tag : c.surface, borderColor: selected ? c.tag : c.line }]}>
+      <View style={styles.statTop}>
+        <Icon name={icon} size={18} color={selected ? c.tagInk : c.inkSoft} />
+        <Txt variant="display" color={selected ? c.tagInk : c.ink} style={{ fontSize: 22, lineHeight: 26 }}>
+          {count}
+        </Txt>
+      </View>
+      <Txt variant="small" color={selected ? c.tagInk : c.ink} numberOfLines={2}>
+        {name}
+      </Txt>
+    </Pressable>
   );
 }
 
@@ -195,10 +267,12 @@ function formatHours(hours: number): string {
 }
 
 const styles = StyleSheet.create({
-  list: { padding: space.lg, paddingBottom: space.xxl },
+  list: { padding: space.lg, paddingBottom: TAB_CLEARANCE },
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   stat: { borderRadius: radius.md, paddingVertical: space.md, paddingHorizontal: space.md, gap: 2, minHeight: 72 },
   statTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   info: { flexDirection: 'row', gap: space.sm, alignItems: 'flex-start' },
+  dept: { width: 132, minHeight: 84, borderRadius: radius.md, borderWidth: 1, padding: space.md, gap: space.xs, justifyContent: 'space-between' },
+  groupHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingTop: space.sm },
 });

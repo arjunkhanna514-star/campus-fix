@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
-import React, { useState } from 'react';
-import {KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, View} from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo, Animated, Easing, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { errorMessage } from '@/src/api';
 import { useAuth } from '@/src/auth';
@@ -8,6 +8,7 @@ import { BrandMark } from '@/src/components/Brand';
 import { ServerStatus } from '@/src/components/ServerStatus';
 import { Button, Card, Field, IconButton, Notice, Screen, Txt } from '@/src/components/ui';
 import { space } from '@/src/theme';
+import { useForever, useReduceMotion, wave } from '@/src/motion';
 
 const DEMO = {
   student: { email: 'alice@campus.test', password: 'Student123!' },
@@ -48,13 +49,7 @@ export default function LoginScreen() {
     <Screen edges={['top', 'bottom']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <View style={styles.brand}>
-            <BrandMark size={52} />
-            <Txt variant="display" accessibilityRole="header" style={{ marginTop: space.lg }}>
-              Campus Fix
-            </Txt>
-            <Txt tone="soft">Spot a problem on campus, report it in a minute, and follow it until it is fixed.</Txt>
-          </View>
+          <Hero />
 
           <View style={{ gap: space.lg }}>
             {error ? <Notice text={error} /> : null}
@@ -114,8 +109,42 @@ export default function LoginScreen() {
   );
 }
 
+// The opening moment: the logo rises in and then floats gently, with the welcome line fading up under it.
+function Hero() {
+  const enter = useRef(new Animated.Value(0)).current;
+  const reduce = useReduceMotion();
+  const float = wave(useForever(4400, 0, !reduce));
+  useEffect(() => {
+    Animated.spring(enter, { toValue: 1, useNativeDriver: true, damping: 16, stiffness: 120 }).start();
+  }, [enter]);
+
+  return (
+    <View style={styles.brand}>
+      <Animated.View
+        style={{
+          opacity: enter,
+          transform: [
+            { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) },
+            { translateY: float.interpolate({ inputRange: [0, 1], outputRange: [0, -6] }) },
+            { scale: enter.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) },
+          ],
+        }}>
+        <BrandMark size={112} glow />
+      </Animated.View>
+      <Animated.View style={{ alignItems: 'center', gap: space.xs, opacity: enter, transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}>
+        <Txt variant="display" accessibilityRole="header" style={{ marginTop: space.xl, textAlign: 'center' }}>
+          Welcome to Campus Fix
+        </Txt>
+        <Txt tone="soft" style={{ textAlign: 'center', maxWidth: 320 }}>
+          Spot a problem on campus, report it in a minute, and follow it until it is fixed.
+        </Txt>
+      </Animated.View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   content: { flexGrow: 1, justifyContent: 'center', padding: space.xl, gap: space.xl, width: '100%', maxWidth: 480, alignSelf: 'center' },
-  brand: { gap: space.xs },
+  brand: { alignItems: 'center', gap: space.xs, paddingTop: space.lg },
   demoRow: { flexDirection: 'row', gap: space.md },
 });

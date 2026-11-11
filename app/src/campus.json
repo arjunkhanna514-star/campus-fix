@@ -1,0 +1,2047 @@
+{
+ "source": "Traced from the official MCAST Paola campus map (1538 x 1169 px). Coordinates are in that image's pixels.",
+ "metresPerPixel": 0.33,
+ "walkMetresPerMinute": 80,
+ "viewBox": [
+  70,
+  40,
+  1380,
+  700
+ ],
+ "boundary": [
+  [
+   88,
+   240
+  ],
+  [
+   130,
+   212
+  ],
+  [
+   116,
+   182
+  ],
+  [
+   265,
+   182
+  ],
+  [
+   358,
+   60
+  ],
+  [
+   590,
+   130
+  ],
+  [
+   690,
+   168
+  ],
+  [
+   690,
+   195
+  ],
+  [
+   895,
+   240
+  ],
+  [
+   1110,
+   305
+  ],
+  [
+   1265,
+   350
+  ],
+  [
+   1425,
+   345
+  ],
+  [
+   1425,
+   720
+  ],
+  [
+   625,
+   722
+  ],
+  [
+   500,
+   712
+  ],
+  [
+   285,
+   645
+  ]
+ ],
+ "lawns": [
+  [
+   [
+    635,
+    198
+   ],
+   [
+    755,
+    198
+   ],
+   [
+    755,
+    318
+   ],
+   [
+    635,
+    318
+   ]
+  ],
+  [
+   [
+    1278,
+    382
+   ],
+   [
+    1318,
+    382
+   ],
+   [
+    1318,
+    555
+   ],
+   [
+    1278,
+    555
+   ]
+  ],
+  [
+   [
+    1365,
+    565
+   ],
+   [
+    1425,
+    565
+   ],
+   [
+    1425,
+    700
+   ],
+   [
+    1365,
+    700
+   ]
+  ],
+  [
+   [
+    918,
+    697
+   ],
+   [
+    1100,
+    697
+   ],
+   [
+    1100,
+    720
+   ],
+   [
+    918,
+    720
+   ]
+  ],
+  [
+   [
+    1022,
+    500
+   ],
+   [
+    1048,
+    500
+   ],
+   [
+    1048,
+    555
+   ],
+   [
+    1022,
+    555
+   ]
+  ],
+  [
+   [
+    1022,
+    568
+   ],
+   [
+    1048,
+    568
+   ],
+   [
+    1048,
+    635
+   ],
+   [
+    1022,
+    635
+   ]
+  ],
+  [
+   [
+    455,
+    305
+   ],
+   [
+    495,
+    305
+   ],
+   [
+    495,
+    332
+   ],
+   [
+    455,
+    332
+   ]
+  ],
+  [
+   [
+    122,
+    295
+   ],
+   [
+    200,
+    270
+   ],
+   [
+    230,
+    300
+   ],
+   [
+    150,
+    330
+   ]
+  ],
+  [
+   [
+    205,
+    470
+   ],
+   [
+    270,
+    430
+   ],
+   [
+    275,
+    540
+   ],
+   [
+    240,
+    545
+   ]
+  ]
+ ],
+ "courts": [
+  [
+   [
+    755,
+    198
+   ],
+   [
+    838,
+    222
+   ],
+   [
+    838,
+    320
+   ],
+   [
+    755,
+    320
+   ]
+  ]
+ ],
+ "unlabelled": [
+  [
+   [
+    1078,
+    485
+   ],
+   [
+    1140,
+    485
+   ],
+   [
+    1140,
+    476
+   ],
+   [
+    1165,
+    476
+   ],
+   [
+    1165,
+    482
+   ],
+   [
+    1225,
+    482
+   ],
+   [
+    1225,
+    388
+   ],
+   [
+    1255,
+    388
+   ],
+   [
+    1255,
+    598
+   ],
+   [
+    1275,
+    598
+   ],
+   [
+    1275,
+    572
+   ],
+   [
+    1338,
+    572
+   ],
+   [
+    1338,
+    600
+   ],
+   [
+    1312,
+    612
+   ],
+   [
+    1335,
+    690
+   ],
+   [
+    1275,
+    690
+   ],
+   [
+    1275,
+    662
+   ],
+   [
+    1290,
+    622
+   ],
+   [
+    1050,
+    622
+   ],
+   [
+    1050,
+    500
+   ],
+   [
+    1078,
+    498
+   ]
+  ]
+ ],
+ "roundabout": {
+  "x": 672,
+  "y": 505,
+  "r": 18
+ },
+ "blocks": [
+  {
+   "id": "A",
+   "name": "Block A",
+   "title": "Institute of Applied Sciences",
+   "category": "institute",
+   "polygon": [
+    [
+     458,
+     362
+    ],
+    [
+     480,
+     360
+    ],
+    [
+     530,
+     385
+    ],
+    [
+     580,
+     415
+    ],
+    [
+     605,
+     445
+    ],
+    [
+     615,
+     492
+    ],
+    [
+     560,
+     480
+    ],
+    [
+     530,
+     470
+    ],
+    [
+     495,
+     445
+    ],
+    [
+     458,
+     415
+    ],
+    [
+     454,
+     385
+    ]
+   ],
+   "label": [
+    528,
+    412
+   ],
+   "entrance": [
+    604,
+    470
+   ],
+   "names": {
+    "lines": [
+     "Institute of",
+     "Applied Sciences"
+    ],
+    "x": 532,
+    "y": 432,
+    "size": 9,
+    "anchor": "middle",
+    "outside": false
+   }
+  },
+  {
+   "id": "B",
+   "name": "Block B",
+   "title": "Institute of Business Management & Commerce",
+   "category": "institute",
+   "polygon": [
+    [
+     797,
+     410
+    ],
+    [
+     820,
+     428
+    ],
+    [
+     905,
+     428
+    ],
+    [
+     922,
+     445
+    ],
+    [
+     920,
+     470
+    ],
+    [
+     895,
+     495
+    ],
+    [
+     760,
+     495
+    ],
+    [
+     748,
+     470
+    ]
+   ],
+   "label": [
+    830,
+    450
+   ],
+   "entrance": [
+    830,
+    496
+   ],
+   "names": {
+    "lines": [
+     "Institute of Business",
+     "Management & Commerce"
+    ],
+    "x": 836,
+    "y": 468,
+    "size": 9,
+    "anchor": "middle",
+    "outside": false
+   }
+  },
+  {
+   "id": "C",
+   "name": "Block C",
+   "title": "Administration",
+   "category": "admin",
+   "polygon": [
+    [
+     306,
+     435
+    ],
+    [
+     332,
+     435
+    ],
+    [
+     334,
+     450
+    ],
+    [
+     342,
+     452
+    ],
+    [
+     342,
+     510
+    ],
+    [
+     382,
+     510
+    ],
+    [
+     384,
+     495
+    ],
+    [
+     422,
+     495
+    ],
+    [
+     422,
+     568
+    ],
+    [
+     340,
+     568
+    ],
+    [
+     338,
+     588
+    ],
+    [
+     308,
+     588
+    ],
+    [
+     308,
+     518
+    ],
+    [
+     292,
+     518
+    ],
+    [
+     292,
+     458
+    ],
+    [
+     304,
+     456
+    ]
+   ],
+   "label": [
+    318,
+    478
+   ],
+   "entrance": [
+    422,
+    540
+   ],
+   "names": {
+    "lines": [
+     "Administration"
+    ],
+    "x": 382,
+    "y": 530,
+    "size": 9,
+    "anchor": "middle",
+    "outside": false
+   }
+  },
+  {
+   "id": "D",
+   "name": "Block D",
+   "title": "Institute of Engineering & Transport: Electrical",
+   "category": "institute",
+   "polygon": [
+    [
+     218,
+     356
+    ],
+    [
+     260,
+     356
+    ],
+    [
+     260,
+     395
+    ],
+    [
+     272,
+     395
+    ],
+    [
+     272,
+     435
+    ],
+    [
+     246,
+     435
+    ],
+    [
+     246,
+     448
+    ],
+    [
+     218,
+     448
+    ],
+    [
+     218,
+     425
+    ],
+    [
+     198,
+     425
+    ],
+    [
+     198,
+     395
+    ],
+    [
+     218,
+     395
+    ]
+   ],
+   "label": [
+    236,
+    396
+   ],
+   "entrance": [
+    272,
+    415
+   ],
+   "names": {
+    "lines": [
+     "Electrical",
+     "Institute of Engineering",
+     "& Transport"
+    ],
+    "x": 236,
+    "y": 464,
+    "size": 8.5,
+    "anchor": "middle",
+    "outside": true
+   }
+  },
+  {
+   "id": "E",
+   "name": "Block E",
+   "title": "Institute of Community Service and the Traditional Chinese Medicine Education Centre",
+   "category": "institute",
+   "polygon": [
+    [
+     376,
+     362
+    ],
+    [
+     417,
+     362
+    ],
+    [
+     417,
+     404
+    ],
+    [
+     407,
+     404
+    ],
+    [
+     407,
+     430
+    ],
+    [
+     398,
+     437
+    ],
+    [
+     388,
+     430
+    ],
+    [
+     388,
+     404
+    ],
+    [
+     376,
+     404
+    ]
+   ],
+   "label": [
+    397,
+    388
+   ],
+   "entrance": [
+    417,
+    385
+   ],
+   "names": {
+    "lines": [
+     "Community Service",
+     "& Chinese Medicine",
+     "Education Centre"
+    ],
+    "x": 370,
+    "y": 376,
+    "size": 8.5,
+    "anchor": "end",
+    "outside": true
+   }
+  },
+  {
+   "id": "F",
+   "name": "Block F",
+   "title": "Institute of Community Service",
+   "category": "institute",
+   "polygon": [
+    [
+     500,
+     254
+    ],
+    [
+     546,
+     252
+    ],
+    [
+     548,
+     262
+    ],
+    [
+     578,
+     264
+    ],
+    [
+     578,
+     308
+    ],
+    [
+     536,
+     308
+    ],
+    [
+     536,
+     342
+    ],
+    [
+     516,
+     342
+    ],
+    [
+     516,
+     302
+    ],
+    [
+     500,
+     300
+    ]
+   ],
+   "label": [
+    565,
+    281
+   ],
+   "entrance": [
+    500,
+    280
+   ],
+   "names": {
+    "lines": [
+     "Community",
+     "Service"
+    ],
+    "x": 532,
+    "y": 290,
+    "size": 8.5,
+    "anchor": "middle",
+    "outside": false
+   }
+  },
+  {
+   "id": "G",
+   "name": "Block G",
+   "title": "Campus Connect and Chaplaincy",
+   "category": "services",
+   "polygon": [
+    [
+     350,
+     251
+    ],
+    [
+     408,
+     251
+    ],
+    [
+     408,
+     295
+    ],
+    [
+     418,
+     297
+    ],
+    [
+     418,
+     340
+    ],
+    [
+     398,
+     340
+    ],
+    [
+     398,
+     330
+    ],
+    [
+     380,
+     330
+    ],
+    [
+     380,
+     320
+    ],
+    [
+     370,
+     320
+    ],
+    [
+     370,
+     298
+    ],
+    [
+     350,
+     298
+    ]
+   ],
+   "label": [
+    380,
+    285
+   ],
+   "entrance": [
+    418,
+    318
+   ],
+   "names": {
+    "lines": [
+     "Campus Connect",
+     "& Chaplaincy"
+    ],
+    "x": 459,
+    "y": 270,
+    "size": 8.5,
+    "anchor": "middle",
+    "outside": true
+   }
+  },
+  {
+   "id": "H",
+   "name": "Block H",
+   "title": "Institute of Engineering & Transport: Mechanical",
+   "category": "institute",
+   "polygon": [
+    [
+     521,
+     137
+    ],
+    [
+     572,
+     139
+    ],
+    [
+     571,
+     229
+    ],
+    [
+     520,
+     227
+    ]
+   ],
+   "label": [
+    546,
+    160
+   ],
+   "entrance": [
+    546,
+    228
+   ],
+   "names": {
+    "lines": [
+     "Mechanical",
+     "Institute of Engineering",
+     "& Transport"
+    ],
+    "x": 512,
+    "y": 150,
+    "size": 8.5,
+    "anchor": "end",
+    "outside": true
+   }
+  },
+  {
+   "id": "I",
+   "name": "Block I",
+   "title": "Institute of Engineering & Transport: Aviation",
+   "category": "institute",
+   "polygon": [
+    [
+     215,
+     248
+    ],
+    [
+     277,
+     250
+    ],
+    [
+     278,
+     270
+    ],
+    [
+     318,
+     272
+    ],
+    [
+     318,
+     311
+    ],
+    [
+     268,
+     309
+    ],
+    [
+     267,
+     300
+    ],
+    [
+     215,
+     298
+    ]
+   ],
+   "label": [
+    244,
+    280
+   ],
+   "entrance": [
+    268,
+    310
+   ],
+   "names": {
+    "lines": [
+     "Aviation",
+     "Institute of Engineering",
+     "& Transport"
+    ],
+    "x": 264,
+    "y": 323,
+    "size": 8,
+    "anchor": "middle",
+    "outside": true
+   }
+  },
+  {
+   "id": "LB",
+   "name": "Block LB",
+   "title": "Institute of Engineering & Transport: Automotive",
+   "category": "institute",
+   "polygon": [
+    [
+     1010,
+     303
+    ],
+    [
+     1040,
+     303
+    ],
+    [
+     1040,
+     313
+    ],
+    [
+     1078,
+     313
+    ],
+    [
+     1078,
+     498
+    ],
+    [
+     1008,
+     498
+    ]
+   ],
+   "label": [
+    1043,
+    334
+   ],
+   "entrance": [
+    1078,
+    400
+   ],
+   "names": {
+    "lines": [
+     "Automotive",
+     "Institute of",
+     "Engineering",
+     "& Transport"
+    ],
+    "x": 1043,
+    "y": 352,
+    "size": 8.5,
+    "anchor": "middle",
+    "outside": false
+   }
+  },
+  {
+   "id": "M",
+   "name": "Block M",
+   "title": "Institute of Information & Communication Technology",
+   "category": "institute",
+   "polygon": [
+    [
+     465,
+     528
+    ],
+    [
+     578,
+     528
+    ],
+    [
+     580,
+     548
+    ],
+    [
+     625,
+     548
+    ],
+    [
+     625,
+     610
+    ],
+    [
+     650,
+     612
+    ],
+    [
+     650,
+     662
+    ],
+    [
+     540,
+     660
+    ],
+    [
+     540,
+     600
+    ],
+    [
+     548,
+     592
+    ],
+    [
+     465,
+     590
+    ]
+   ],
+   "label": [
+    505,
+    556
+   ],
+   "entrance": [
+    610,
+    548
+   ],
+   "names": {
+    "lines": [
+     "Institute of Information &",
+     "Communication",
+     "Technology"
+    ],
+    "x": 596,
+    "y": 620,
+    "size": 9,
+    "anchor": "middle",
+    "outside": false
+   }
+  },
+  {
+   "id": "N",
+   "name": "Block N",
+   "title": "Institute of Engineering & Transport: Building & Construction, and the Institute for the Trades",
+   "category": "institute",
+   "polygon": [
+    [
+     277,
+     63
+    ],
+    [
+     341,
+     69
+    ],
+    [
+     333,
+     241
+    ],
+    [
+     263,
+     234
+    ]
+   ],
+   "label": [
+    302,
+    92
+   ],
+   "entrance": [
+    336,
+    200
+   ],
+   "names": {
+    "lines": [
+     "Building &",
+     "Construction",
+     "Institute of",
+     "Engineering",
+     "& Transport,",
+     "and Institute",
+     "for the Trades"
+    ],
+    "x": 301,
+    "y": 114,
+    "size": 8.5,
+    "anchor": "middle",
+    "outside": false
+   }
+  },
+  {
+   "id": "S",
+   "name": "Block S",
+   "title": "Students' House, Youth Hub, Multifaith Room and cafeteria",
+   "category": "food",
+   "polygon": [
+    [
+     629,
+     340
+    ],
+    [
+     730,
+     340
+    ],
+    [
+     781,
+     384
+    ],
+    [
+     743,
+     415
+    ],
+    [
+     743,
+     440
+    ],
+    [
+     721,
+     440
+    ],
+    [
+     721,
+     405
+    ],
+    [
+     696,
+     405
+    ],
+    [
+     696,
+     432
+    ],
+    [
+     629,
+     432
+    ]
+   ],
+   "label": [
+    656,
+    362
+   ],
+   "entrance": [
+    700,
+    340
+   ],
+   "names": {
+    "lines": [
+     "Students' House",
+     "Youth Hub &",
+     "Multifaith Room"
+    ],
+    "x": 668,
+    "y": 380,
+    "size": 8.5,
+    "anchor": "middle",
+    "outside": false
+   }
+  },
+  {
+   "id": "MRC",
+   "name": "MRC Library",
+   "title": "MCAST Resource Centre: Library",
+   "category": "library",
+   "polygon": [
+    [
+     738,
+     523
+    ],
+    [
+     798,
+     523
+    ],
+    [
+     808,
+     543
+    ],
+    [
+     872,
+     543
+    ],
+    [
+     872,
+     598
+    ],
+    [
+     818,
+     602
+    ],
+    [
+     778,
+     600
+    ],
+    [
+     770,
+     610
+    ],
+    [
+     785,
+     630
+    ],
+    [
+     815,
+     640
+    ],
+    [
+     822,
+     672
+    ],
+    [
+     760,
+     678
+    ],
+    [
+     740,
+     650
+    ],
+    [
+     715,
+     620
+    ],
+    [
+     705,
+     590
+    ],
+    [
+     705,
+     545
+    ]
+   ],
+   "label": [
+    760,
+    560
+   ],
+   "entrance": [
+    760,
+    523
+   ],
+   "names": {
+    "lines": [
+     "Library",
+     "MCAST Resource",
+     "Centre"
+    ],
+    "x": 828,
+    "y": 560,
+    "size": 9,
+    "anchor": "middle",
+    "outside": false
+   }
+  },
+  {
+   "id": "LG",
+   "name": "Lower Gym",
+   "title": "Lower Gym",
+   "category": "sport",
+   "polygon": [
+    [
+     118,
+     254
+    ],
+    [
+     175,
+     215
+    ],
+    [
+     193,
+     240
+    ],
+    [
+     137,
+     276
+    ]
+   ],
+   "label": [
+    155,
+    245
+   ],
+   "entrance": [
+    165,
+    262
+   ],
+   "names": {
+    "lines": [
+     "Lower Gym"
+    ],
+    "x": 158,
+    "y": 292,
+    "size": 8.5,
+    "anchor": "middle",
+    "outside": true
+   }
+  },
+  {
+   "id": "UG",
+   "name": "Upper Gym",
+   "title": "Upper Gym",
+   "category": "sport",
+   "polygon": [
+    [
+     927,
+     318
+    ],
+    [
+     1000,
+     318
+    ],
+    [
+     1003,
+     303
+    ],
+    [
+     1010,
+     303
+    ],
+    [
+     1010,
+     350
+    ],
+    [
+     972,
+     352
+    ],
+    [
+     972,
+     387
+    ],
+    [
+     948,
+     387
+    ],
+    [
+     948,
+     425
+    ],
+    [
+     970,
+     425
+    ],
+    [
+     972,
+     468
+    ],
+    [
+     927,
+     468
+    ]
+   ],
+   "label": [
+    962,
+    342
+   ],
+   "entrance": [
+    927,
+    400
+   ],
+   "names": {
+    "lines": [
+     "Upper",
+     "Gym"
+    ],
+    "x": 950,
+    "y": 442,
+    "size": 8.5,
+    "anchor": "middle",
+    "outside": false
+   }
+  },
+  {
+   "id": "U",
+   "name": "Block U",
+   "title": "Child Care Centre",
+   "category": "services",
+   "polygon": [
+    [
+     1384,
+     345
+    ],
+    [
+     1414,
+     345
+    ],
+    [
+     1414,
+     415
+    ],
+    [
+     1384,
+     415
+    ]
+   ],
+   "label": [
+    1399,
+    384
+   ],
+   "entrance": [
+    1384,
+    410
+   ],
+   "names": {
+    "lines": [
+     "Child Care",
+     "Centre"
+    ],
+    "x": 1378,
+    "y": 372,
+    "size": 8.5,
+    "anchor": "end",
+    "outside": true
+   }
+  }
+ ],
+ "gates": [
+  {
+   "id": "G1",
+   "name": "Gate 1",
+   "point": [
+    1105,
+    308
+   ],
+   "label": [
+    1100,
+    296
+   ]
+  },
+  {
+   "id": "G3",
+   "name": "Gate 3",
+   "point": [
+    862,
+    234
+   ],
+   "label": [
+    868,
+    221
+   ]
+  },
+  {
+   "id": "G4",
+   "name": "Gate 4",
+   "point": [
+    722,
+    192
+   ],
+   "label": [
+    710,
+    170
+   ],
+   "note": "Indoor parking"
+  },
+  {
+   "id": "G5",
+   "name": "Gate 5",
+   "point": [
+    592,
+    150
+   ],
+   "label": [
+    610,
+    133
+   ]
+  },
+  {
+   "id": "G9",
+   "name": "Gate 9",
+   "point": [
+    402,
+    672
+   ],
+   "label": [
+    408,
+    665
+   ]
+  }
+ ],
+ "parking": [
+  [
+   742,
+   155
+  ],
+  [
+   855,
+   405
+  ],
+  [
+   1135,
+   410
+  ],
+  [
+   1358,
+   460
+  ]
+ ],
+ "stairs": [
+  [
+   595,
+   410
+  ],
+  [
+   795,
+   395
+  ],
+  [
+   433,
+   553
+  ],
+  [
+   910,
+   310
+  ]
+ ],
+ "start": {
+  "id": "HERE",
+  "name": "Students' House",
+  "point": [
+   745,
+   312
+  ]
+ },
+ "nodes": {
+  "here": [
+   745,
+   325
+  ],
+  "sN": [
+   705,
+   328
+  ],
+  "pitchW": [
+   612,
+   328
+  ],
+  "pitchNW": [
+   625,
+   195
+  ],
+  "fE": [
+   600,
+   285
+  ],
+  "fNE": [
+   595,
+   240
+  ],
+  "hS": [
+   546,
+   240
+  ],
+  "hW": [
+   470,
+   215
+  ],
+  "g5": [
+   592,
+   158
+  ],
+  "g4": [
+   722,
+   192
+  ],
+  "aNE": [
+   612,
+   420
+  ],
+  "plazaN": [
+   668,
+   460
+  ],
+  "plazaW": [
+   628,
+   512
+  ],
+  "plazaS": [
+   680,
+   535
+  ],
+  "sNE": [
+   800,
+   350
+  ],
+  "sB": [
+   757,
+   440
+  ],
+  "sB2": [
+   735,
+   470
+  ],
+  "bW": [
+   738,
+   505
+  ],
+  "mrcN": [
+   760,
+   512
+  ],
+  "bS": [
+   840,
+   515
+  ],
+  "ugS": [
+   925,
+   490
+  ],
+  "ugW": [
+   925,
+   400
+  ],
+  "ugN": [
+   905,
+   330
+  ],
+  "g3": [
+   862,
+   245
+  ],
+  "ugNW": [
+   912,
+   300
+  ],
+  "nRoad": [
+   1040,
+   292
+  ],
+  "g1": [
+   1105,
+   320
+  ],
+  "lbE": [
+   1095,
+   400
+  ],
+  "lotNW": [
+   1160,
+   365
+  ],
+  "lotNE": [
+   1345,
+   368
+  ],
+  "uW": [
+   1370,
+   410
+  ],
+  "fW": [
+   470,
+   280
+  ],
+  "gE": [
+   455,
+   318
+  ],
+  "eE": [
+   448,
+   372
+  ],
+  "aW": [
+   440,
+   452
+  ],
+  "aS": [
+   530,
+   505
+  ],
+  "cE": [
+   443,
+   540
+  ],
+  "mW": [
+   443,
+   610
+  ],
+  "g9": [
+   402,
+   660
+  ],
+  "nE": [
+   370,
+   215
+  ],
+  "gGap": [
+   334,
+   250
+  ],
+  "gW": [
+   345,
+   340
+  ],
+  "gS": [
+   400,
+   352
+  ],
+  "iS": [
+   300,
+   330
+  ],
+  "dE": [
+   285,
+   415
+  ],
+  "lgE": [
+   190,
+   300
+  ]
+ },
+ "edges": [
+  [
+   "here",
+   "sN"
+  ],
+  [
+   "sN",
+   "pitchW"
+  ],
+  [
+   "pitchW",
+   "fE"
+  ],
+  [
+   "fE",
+   "fNE"
+  ],
+  [
+   "fNE",
+   "hS"
+  ],
+  [
+   "fNE",
+   "g5"
+  ],
+  [
+   "hS",
+   "hW"
+  ],
+  [
+   "g5",
+   "pitchNW"
+  ],
+  [
+   "pitchNW",
+   "g4"
+  ],
+  [
+   "pitchW",
+   "pitchNW"
+  ],
+  [
+   "pitchW",
+   "aNE"
+  ],
+  [
+   "aNE",
+   "plazaN"
+  ],
+  [
+   "plazaN",
+   "plazaW"
+  ],
+  [
+   "plazaW",
+   "plazaS"
+  ],
+  [
+   "plazaN",
+   "plazaS"
+  ],
+  [
+   "here",
+   "sNE"
+  ],
+  [
+   "sNE",
+   "sB"
+  ],
+  [
+   "sB",
+   "sB2"
+  ],
+  [
+   "sB2",
+   "bW"
+  ],
+  [
+   "plazaN",
+   "bW"
+  ],
+  [
+   "bW",
+   "mrcN"
+  ],
+  [
+   "plazaS",
+   "mrcN"
+  ],
+  [
+   "bW",
+   "bS"
+  ],
+  [
+   "bS",
+   "ugS"
+  ],
+  [
+   "sNE",
+   "ugW"
+  ],
+  [
+   "ugS",
+   "ugW"
+  ],
+  [
+   "ugW",
+   "ugN"
+  ],
+  [
+   "ugN",
+   "g3"
+  ],
+  [
+   "here",
+   "ugN"
+  ],
+  [
+   "ugN",
+   "ugNW"
+  ],
+  [
+   "ugNW",
+   "nRoad"
+  ],
+  [
+   "nRoad",
+   "g1"
+  ],
+  [
+   "g1",
+   "lbE"
+  ],
+  [
+   "lbE",
+   "lotNW"
+  ],
+  [
+   "lotNW",
+   "lotNE"
+  ],
+  [
+   "lotNE",
+   "uW"
+  ],
+  [
+   "fW",
+   "hW"
+  ],
+  [
+   "fW",
+   "gE"
+  ],
+  [
+   "gE",
+   "eE"
+  ],
+  [
+   "eE",
+   "aW"
+  ],
+  [
+   "aW",
+   "aS"
+  ],
+  [
+   "aS",
+   "plazaW"
+  ],
+  [
+   "aW",
+   "cE"
+  ],
+  [
+   "cE",
+   "mW"
+  ],
+  [
+   "mW",
+   "g9"
+  ],
+  [
+   "hW",
+   "nE"
+  ],
+  [
+   "nE",
+   "gGap"
+  ],
+  [
+   "gGap",
+   "gW"
+  ],
+  [
+   "gW",
+   "gS"
+  ],
+  [
+   "gS",
+   "eE"
+  ],
+  [
+   "gW",
+   "iS"
+  ],
+  [
+   "iS",
+   "dE"
+  ],
+  [
+   "iS",
+   "lgE"
+  ],
+  [
+   "dE",
+   "aW"
+  ]
+ ],
+ "entranceNode": {
+  "A": "aNE",
+  "B": "bS",
+  "C": "cE",
+  "D": "dE",
+  "E": "eE",
+  "F": "fW",
+  "G": "gE",
+  "H": "hS",
+  "I": "iS",
+  "LB": "lbE",
+  "M": "plazaW",
+  "N": "nE",
+  "S": "sN",
+  "MRC": "mrcN",
+  "LG": "lgE",
+  "UG": "ugW",
+  "U": "uW",
+  "G1": "g1",
+  "G3": "g3",
+  "G4": "g4",
+  "G5": "g5",
+  "G9": "g9",
+  "HERE": "here"
+ },
+ "nodeNear": {
+  "here": "Students' House",
+  "sN": "Block S",
+  "pitchW": "the football pitch",
+  "pitchNW": "the football pitch",
+  "fE": "Block F",
+  "fNE": "Block F",
+  "hS": "Block H",
+  "hW": "Block H",
+  "g5": "Gate 5",
+  "g4": "Gate 4",
+  "aNE": "Block A",
+  "plazaN": "the central square",
+  "plazaW": "Block M",
+  "plazaS": "the central square",
+  "sNE": "Block S",
+  "sB": "Block B",
+  "sB2": "Block B",
+  "bW": "Block B",
+  "mrcN": "the library",
+  "bS": "Block B",
+  "ugS": "the Upper Gym",
+  "ugW": "the Upper Gym",
+  "ugN": "the Upper Gym",
+  "g3": "Gate 3",
+  "ugNW": "the Upper Gym",
+  "nRoad": "Block LB",
+  "g1": "Gate 1",
+  "lbE": "Block LB",
+  "lotNW": "the car park",
+  "lotNE": "the car park",
+  "uW": "Block U",
+  "fW": "Block F",
+  "gE": "Block G",
+  "eE": "Block E",
+  "aW": "Block A",
+  "aS": "Block A",
+  "cE": "Block C",
+  "mW": "Block M",
+  "g9": "Gate 9",
+  "nE": "Block N",
+  "gGap": "Block I",
+  "gW": "Block G",
+  "gS": "Block E",
+  "iS": "Block I",
+  "dE": "Block D",
+  "lgE": "the Lower Gym"
+ },
+ "geo": {
+  "anchorLat": 35.8773,
+  "anchorLng": 14.5063,
+  "anchorX": 756,
+  "anchorY": 391,
+  "rotationDeg": 0,
+  "source": "Wikipedia: Malta College of Arts, Science and Technology, coordinates 35.8773 N, 14.5063 E"
+ }
+}

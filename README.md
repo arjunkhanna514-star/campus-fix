@@ -66,12 +66,56 @@ To open it in a browser on the laptop instead, press `w`.
 
 Six more students exist with the same password: chloe, luca, maria, karl, nadia and sam. The login screen has buttons that fill in Alice and the admin for you.
 
+## Use it on your own phone, or share it with anyone (free)
+
+**Fastest, works on every phone: the shared link and QR code**
+1. Keep the server running (`npm run server`), then in a second window run `npm run share`.
+2. It opens a free Cloudflare link (no account) and prints a QR code in the terminal. The QR page is also at `<link>/get`; show it on a big screen.
+3. Anyone scans it with the phone camera:
+   - **iPhone:** opens in Safari. Tap Share, then Add to Home Screen. Campus Fix gets its own icon and opens full screen.
+   - **Android:** opens in Chrome. Tap the menu, then Install app.
+   - **Any other phone:** open the link in its browser.
+4. In the app, the QR button on Home (or Profile, Share the app) shows the same code.
+
+The link works while the laptop is on and the window stays open. Each run gives a new link. If `app/dist` is missing, build it once with `npm run web:build`.
+
+
+The app is set up for both Android and iPhone (bundle id `com.campusfix.app`, with the logo as the icon and splash screen). The phone always needs to reach the server, so keep `npm run server` running on the laptop and put the phone on the same Wi-Fi.
+
+**iPhone or Android, free, in a few minutes: Expo Go**
+1. Install **Expo Go** from the App Store or Google Play.
+2. Run `npm run app` on the laptop and scan the QR code (iPhone: with the Camera app; Android: inside Expo Go).
+3. The app finds the server automatically through the laptop's Wi-Fi address. If not, tap Change on the login screen and type the address the server prints, for example `192.168.1.20:4000`.
+
+Some networks (campus and venue Wi-Fi) block devices from talking to each other. At home it works.
+
+**Android as a real installed app, free: an APK**
+1. Create a free account at expo.dev, then run `npx eas-cli@latest login` inside `app/`.
+2. Run `npx eas-cli@latest build -p android --profile preview`. Expo builds it in the cloud (about 10–20 minutes) and gives a download link.
+3. Open the link on the Android phone and install the APK.
+
+The satellite view works everywhere with no setup: Apple's satellite map on iPhone, Google's in Expo Go, and Google's free satellite embed on the web and in the APK.
+
+**iPhone as a real installed app**
+Apple only allows this through an Apple Developer account (99 USD a year): `npx eas-cli@latest build -p ios --profile preview`, then install through the link or TestFlight. Without that account, use Expo Go as above.
+
+**Location on the real campus.** Allow location when asked. The map shows which block you are in and follows you during directions. If the blue dot is a few metres off, tap "Fix position" on the map and choose where you are standing.
+
+## Always online, with the laptop off (free hosting on Vercel)
+
+The repo includes `vercel.json`, so Vercel (vercel.com, free Hobby plan, no card) hosts the web app and the server together:
+1. Push this folder to GitHub (repo `campus-fix`).
+2. On vercel.com, sign in with GitHub, choose **Add New > Project**, import `campus-fix`, name the project `campus-fix-mcast`, leave every setting as it is, and press **Deploy**.
+3. In about a minute the app is live at `https://campus-fix-mcast.vercel.app`. Open `/get` for a QR code anyone can scan. On an iPhone: open the link in Safari, tap Share, then Add to Home Screen. The phone app also falls back to this address when the laptop is off.
+
+How it works: the web app in `app/dist` is served as static files, and `api/index.js` runs the same Express server (`server/src/app.js`) as a serverless function. Good to know: Vercel's free functions have no permanent disk, so the database lives in `/tmp` and goes back to the demo data when Vercel starts a fresh copy (after a while with no visitors, or after a redeploy). That suits a demo; for real use, move the data to a hosted database. The web build in `app/dist` is committed, so run `npm run web:build` and push again after changing the app.
+
 ## Useful commands
 
 | Command | What it does |
 |---|---|
 | `npm run seed` | Resets the database to the demo data. Safe to run while the server is running |
-| `npm run smoke` | Runs 71 automatic checks against the API on a separate test database |
+| `npm run smoke` | Runs 97 automatic checks against the API on a separate test database |
 | `npm run typecheck` | Checks the app's TypeScript |
 
 ## How the app finds the server

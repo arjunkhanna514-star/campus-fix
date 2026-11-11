@@ -1,258 +1,360 @@
-// The feed: every report on campus, with search, filters and sorting.
-// It refreshes itself every 10 seconds while it is on screen, so a report
-// made on one phone appears on the others without anyone pulling to refresh.
+// Home: the first screen for students and admins. Live weather at MCAST
+// with Tag dressed for it, quick actions, emergency help, the app tour,
+// and what is happening on campus right now.
 
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
-import { api, errorMessage } from '@/src/api';
+import { api } from '@/src/api';
 import { useAuth } from '@/src/auth';
 import { BrandRow } from '@/src/components/Brand';
 import { IssueCard } from '@/src/components/IssueCard';
+import { LanguageButton, LanguageSheet } from '@/src/components/LanguagePicker';
 import { HealthCard } from '@/src/components/Progress';
-import { STATUS_LABEL } from '@/src/components/StatusChip';
-import { Button, Chip, EmptyState, Icon, Loading, Notice, Screen, Segmented, Txt } from '@/src/components/ui';
+import { Card, Icon, PressableScale, Screen, Skeleton, Txt } from '@/src/components/ui';
+import { WeatherAvatar } from '@/src/components/WeatherAvatar';
+import { WeatherEffects } from '@/src/components/WeatherEffects';
+import { haptics } from '@/src/haptics';
+import { useT } from '@/src/i18n';
 import { useSession } from '@/src/session';
-import { fonts, MAX_WIDTH, radius, space, useTheme } from '@/src/theme';
-import { CampusHealth, Issue, Status, STATUSES } from '@/src/types';
+import { getItem } from '@/src/storage';
+import { fonts, MAX_WIDTH, radius, space, TAB_CLEARANCE, useTheme } from '@/src/theme';
+import { AdminStats, CampusHealth, Issue } from '@/src/types';
+import { SEASONS, useWeather, WEATHER_ICON, WEATHER_KINDS, WeatherKind } from '@/src/weather';
 
-type Sort = 'trending' | 'newest' | 'mine';
-const REFRESH_MS = 10000;
+const RED = '#E5383B';
 
-export default function FeedScreen() {
+const CARD_BG: Record<WeatherKind, [string, string]> = {
+  clear: ['#3B2F1F', '#16171B'],
+  partly: ['#2E2B25', '#16171B'],
+  cloudy: ['#2B2E34', '#17181C'],
+  fog: ['#31333A', '#1B1C21'],
+  drizzle: ['#202835', '#15171B'],
+  rain: ['#1A2534', '#111318'],
+  storm: ['#1D1729', '#0E0F14'],
+  snow: ['#2C3543', '#171A20'],
+  wind: ['#272B31', '#16181C'],
+  night: ['#141B35', '#0B0D15'],
+};
+
+export default function HomeScreen() {
   const { user } = useAuth();
-  const { me, meta } = useSession();
+  const { me } = useSession();
   const { c } = useTheme();
-  const { width } = useWindowDimensions();
+  const t = useT();
+  const weather = useWeather();
   const isAdmin = user?.role === 'admin';
+  const { width } = useWindowDimensions();
+  const tileWidth = Math.floor((Math.min(width, MAX_WIDTH) - space.lg * 2 - space.sm * 2) / 3) - 1;
 
-  const [sort, setSort] = useState<Sort>('trending');
-  const [query, setQuery] = useState('');
-  const [search, setSearch] = useState(''); // the query after the user pauses typing
-  const [statusFilter, setStatusFilter] = useState<Status | null>(null);
-  const [categoryFilter, setCategoryFilter] = useState<number | null>(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-
-  const [issues, setIssues] = useState<Issue[] | null>(null);
+  const [latest, setLatest] = useState<Issue[] | null>(null);
   const [health, setHealth] = useState<CampusHealth | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState<AdminStats | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const latestRequest = useRef(0);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setSearch(query.trim()), 300);
-    return () => clearTimeout(timer);
-  }, [query]);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [langOpen, setLangOpen] = useState(false);
+  const [tourSeen, setTourSeen] = useState(true);
 
   const load = useCallback(async () => {
-    const requestId = ++latestRequest.current;
-    const params = new URLSearchParams();
-    params.set('sort', sort === 'trending' ? 'trending' : 'newest');
-    if (sort === 'mine') params.set('mine', '1');
-    if (search) params.set('q', search);
-    if (statusFilter) params.set('status', statusFilter);
-    if (categoryFilter) params.set('category', String(categoryFilter));
     try {
-      const [list, campus] = await Promise.all([api<Issue[]>(`/issues?${params}`), api<CampusHealth>('/campus-health')]);
-      if (requestId !== latestRequest.current) return; // a newer request has already replaced this one
-      setIssues(list);
+      const [list, campus, numbers] = await Promise.all([
+        api<Issue[]>('/issues?sort=newest'),
+        api<CampusHealth>('/campus-health'),
+        isAdmin ? api<AdminStats>('/admin/stats') : Promise.resolve(null),
+      ]);
+      setLatest(list.slice(0, 3));
       setHealth(campus);
-      setError(null);
-    } catch (err) {
-      if (requestId === latestRequest.current) setError(errorMessage(err));
+      setStats(numbers);
+    } catch {
+      setLatest((old) => old ?? []);
     }
-  }, [sort, search, statusFilter, categoryFilter]);
+  }, [isAdmin]);
 
   useFocusEffect(
     useCallback(() => {
       load();
-      const timer = setInterval(load, REFRESH_MS);
-      return () => clearInterval(timer);
+      getItem('tour_seen').then((v) => setTourSeen(v === '1'));
     }, [load])
   );
 
-  const pullToRefresh = async () => {
+  const pull = async () => {
     setRefreshing(true);
+    weather.refresh();
     await load();
     setRefreshing(false);
   };
 
-  const replaceIssue = (updated: Issue) => setIssues((list) => list?.map((item) => (item.id === updated.id ? updated : item)) ?? null);
+  const hour = new Date().getHours();
+  const first = (user?.name ?? '').split(' ')[0];
+  const greeting = t(hour < 12 ? 'home.morning' : hour < 18 ? 'home.afternoon' : 'home.evening', { name: first });
 
-  const activeFilters = (statusFilter ? 1 : 0) + (categoryFilter ? 1 : 0);
-  const filtering = activeFilters > 0 || search.length > 0;
-  const clearFilters = () => {
-    setStatusFilter(null);
-    setCategoryFilter(null);
-    setQuery('');
-  };
+  const actions = isAdmin
+    ? [
+        { icon: 'clipboard-check-outline', label: t('home.manageReports'), go: () => router.navigate('/admin') },
+        { icon: 'format-list-bulleted', label: t('home.allIssues'), go: () => router.navigate('/issues') },
+        { icon: 'map-outline', label: t('home.campusMap'), go: () => router.navigate('/map') },
+        { icon: 'phone-alert', label: t('common.emergency'), go: () => router.push('/emergency'), danger: true },
+        { icon: 'play-circle-outline', label: t('home.tour'), go: () => router.push('/tour') },
+        { icon: 'translate', label: t('common.language'), go: () => setLangOpen(true) },
+      ]
+    : [
+        { icon: 'plus-thick', label: t('home.reportProblem'), go: () => router.navigate('/report'), primary: true },
+        { icon: 'format-list-bulleted', label: t('home.allIssues'), go: () => router.navigate('/issues') },
+        { icon: 'map-outline', label: t('home.campusMap'), go: () => router.navigate('/map') },
+        { icon: 'trophy-outline', label: t('home.ranks'), go: () => router.navigate('/leaderboard') },
+        { icon: 'phone-alert', label: t('common.emergency'), go: () => router.push('/emergency'), danger: true },
+        { icon: 'play-circle-outline', label: t('home.tour'), go: () => router.push('/tour') },
+      ];
 
-  const columns = Math.min(width, MAX_WIDTH) >= 700 ? 2 : 1;
-
-  const header = (
-    <View style={{ gap: space.lg, paddingBottom: space.md }}>
-      <View style={styles.topRow}>
-        <BrandRow />
-        {isAdmin ? (
-          <View style={[styles.pill, { backgroundColor: c.surfaceAlt }]}>
-            <Icon name="shield-account" size={16} />
-            <Txt variant="small">Admin</Txt>
-          </View>
-        ) : me ? (
-          <Pressable
-            onPress={() => router.push('/profile')}
-            accessibilityRole="button"
-            accessibilityLabel={`${me.points} points, level ${me.level.name}. Open your profile.`}
-            style={({ pressed }) => [styles.pill, { backgroundColor: pressed ? c.tagPressed : c.tag }]}>
-            <Txt variant="number" tone="tagInk" style={{ fontSize: 17, lineHeight: 20 }}>
-              {me.points}
-            </Txt>
-            <Txt variant="small" tone="tagInk">
-              pts, {me.level.name}
-            </Txt>
-          </Pressable>
-        ) : null}
-      </View>
-
-      {health ? <HealthCard health={health} /> : null}
-
-      <View style={styles.searchRow}>
-        <View style={[styles.search, { backgroundColor: c.surface, borderColor: c.line }]}>
-          <Icon name="magnify" size={20} color={c.inkSoft} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Search by problem, building or room"
-            placeholderTextColor={c.inkFaint}
-            accessibilityLabel="Search reports"
-            returnKeyType="search"
-            autoCorrect={false}
-            style={[styles.searchInput, { color: c.ink }]}
-          />
-          {query ? (
-            <Pressable onPress={() => setQuery('')} accessibilityRole="button" accessibilityLabel="Clear search" hitSlop={12}>
-              <Icon name="close-circle" size={18} color={c.inkFaint} />
-            </Pressable>
-          ) : null}
-        </View>
-        <Pressable
-          onPress={() => setFiltersOpen((open) => !open)}
-          accessibilityRole="button"
-          accessibilityLabel={activeFilters ? `Filters, ${activeFilters} active` : 'Filters'}
-          accessibilityState={{ expanded: filtersOpen }}
-          style={[styles.filterButton, { backgroundColor: filtersOpen || activeFilters ? c.ink : c.surface, borderColor: filtersOpen || activeFilters ? c.ink : c.line }]}>
-          <Icon name="tune-variant" size={20} color={filtersOpen || activeFilters ? c.bg : c.ink} />
-          {activeFilters ? <Txt variant="small" color={c.bg}>{activeFilters}</Txt> : null}
-        </Pressable>
-      </View>
-
-      {filtersOpen ? (
-        <View style={{ gap: space.md }}>
-          <View style={{ gap: space.sm }}>
-            <Txt variant="small" tone="soft">
-              Status
-            </Txt>
-            <View style={styles.chips}>
-              {STATUSES.map((status) => (
-                <Chip key={status} label={STATUS_LABEL[status]} selected={statusFilter === status} onPress={() => setStatusFilter(statusFilter === status ? null : status)} />
-              ))}
-            </View>
-          </View>
-          <View style={{ gap: space.sm }}>
-            <Txt variant="small" tone="soft">
-              Category
-            </Txt>
-            <View style={styles.chips}>
-              {(meta?.categories ?? []).map((category) => (
-                <Chip
-                  key={category.id}
-                  label={category.name}
-                  icon={category.icon}
-                  selected={categoryFilter === category.id}
-                  onPress={() => setCategoryFilter(categoryFilter === category.id ? null : category.id)}
-                />
-              ))}
-            </View>
-          </View>
-        </View>
-      ) : null}
-
-      <Segmented<Sort>
-        value={sort}
-        onChange={setSort}
-        options={
-          isAdmin
-            ? [
-                { value: 'trending', label: 'Most upvoted' },
-                { value: 'newest', label: 'Newest' },
-              ]
-            : [
-                { value: 'trending', label: 'Most upvoted' },
-                { value: 'newest', label: 'Newest' },
-                { value: 'mine', label: 'My reports' },
-              ]
-        }
-      />
-
-      {error ? <Notice text={error} /> : null}
-    </View>
-  );
-
-  const empty =
-    issues === null ? (
-      error ? undefined : (
-        <Loading />
-      )
-    ) : filtering ? (
-      <EmptyState
-        icon="text-box-search-outline"
-        title="No reports match"
-        body="Try a different word, or clear the filters to see everything."
-        action={<Button label="Clear search and filters" variant="outline" small onPress={clearFilters} style={{ marginTop: space.sm }} />}
-      />
-    ) : sort === 'mine' ? (
-      <EmptyState
-        icon="flag-outline"
-        title="You have not reported anything yet"
-        body="Seen something broken? Your first report earns points and a badge."
-        action={<Button label="Report a problem" icon="plus-thick" small onPress={() => router.push('/report')} style={{ marginTop: space.sm }} />}
-      />
-    ) : (
-      <EmptyState icon="check-circle" title="Nothing reported yet" body="When students report problems, they show up here for everyone to see." />
-    );
+  const sourceText = weather.source === 'live' ? t('home.liveWeather') : weather.source === 'season' ? t('home.seasonWeather') : t('home.preview');
 
   return (
     <Screen>
-      <FlatList
-        key={columns}
-        data={issues ?? []}
-        numColumns={columns}
-        keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => (
-          <View style={columns > 1 ? { flex: 1, maxWidth: '50%' } : undefined}>
-            <IssueCard issue={item} onChange={replaceIssue} fill={columns > 1} />
+      <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={pull} tintColor={c.inkSoft} colors={[c.ink]} />}>
+        <View style={styles.topRow}>
+          <BrandRow compact={width < 440} />
+          <View style={{ flex: 1 }} />
+          <PressableScale
+            onPress={() => router.push('/share')}
+            accessibilityRole="button"
+            accessibilityLabel={t('share.row')}
+            style={[styles.iconPill, { backgroundColor: c.surface, borderColor: c.line }]}>
+            <Icon name="qrcode" size={18} />
+          </PressableScale>
+          <LanguageButton />
+          <Pressable
+            onPress={() => router.push('/emergency')}
+            accessibilityRole="button"
+            accessibilityLabel={t('common.emergency')}
+            style={({ pressed }) => [styles.pill, { backgroundColor: pressed ? '#B92B2E' : RED }]}>
+            <Icon name="phone-alert" size={16} color="#FFFFFF" />
+            <Txt variant="small" color="#FFFFFF" style={{ fontFamily: fonts.headBold }}>
+              SOS
+            </Txt>
+          </Pressable>
+        </View>
+
+        <View style={{ gap: 2 }}>
+          <Txt variant="title" accessibilityRole="header">
+            {greeting}
+          </Txt>
+          <Txt tone="soft">{isAdmin ? t('home.adminLine') : t('home.studentLine')}</Txt>
+        </View>
+
+        {/* weather */}
+        <View style={[styles.weather, { borderColor: c.lineStrong }]} testID="weather-card">
+          <LinearGradient colors={CARD_BG[weather.kind]} style={StyleSheet.absoluteFill} />
+          <WeatherEffects kind={weather.kind} season={weather.season} density={0.75} compact tint={false} />
+          <View style={styles.weatherRow}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Txt variant="small" color="rgba(255,255,255,0.75)">
+                {t('home.weatherAt')}
+              </Txt>
+              <Txt variant="display" color="#FFFFFF" style={{ fontSize: 52, lineHeight: 58 }}>
+                {weather.temperature !== null ? `${weather.temperature}°` : '--°'}
+              </Txt>
+              <Txt variant="heading" color="#FFFFFF" testID="weather-name">
+                {t(`weather.${weather.kind}`)}
+              </Txt>
+              <Txt variant="small" color="rgba(255,255,255,0.75)">
+                {t(`season.${weather.season}`)}
+                {weather.wind !== null ? `, ${t('home.wind', { speed: weather.wind })}` : ''}
+              </Txt>
+            </View>
+            <WeatherAvatar kind={weather.kind} season={weather.season} size={128} />
           </View>
-        )}
-        columnWrapperStyle={columns > 1 ? { gap: space.md } : undefined}
-        ItemSeparatorComponent={() => <View style={{ height: space.md }} />}
-        ListHeaderComponent={header}
-        ListEmptyComponent={empty}
-        contentContainerStyle={styles.list}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={pullToRefresh} tintColor={c.inkSoft} colors={[c.ink]} />}
-      />
+          <View style={styles.bubble}>
+            <Txt variant="small" color="#0A0A0B">
+              {t(`tip.${weather.kind}`)}
+            </Txt>
+          </View>
+          <View style={styles.sourceRow}>
+            <View style={[styles.dot, { backgroundColor: weather.source === 'live' ? '#6FD08C' : weather.source === 'preview' ? '#FFD27A' : '#9AA0AA' }]} />
+            <Txt variant="micro" color="rgba(255,255,255,0.75)" style={{ flex: 1 }}>
+              {sourceText}
+            </Txt>
+            <PressableScale
+              onPress={() => setPreviewOpen((o) => !o)}
+              accessibilityRole="button"
+              accessibilityLabel={t('home.preview')}
+              accessibilityState={{ expanded: previewOpen }}
+              style={styles.previewBtn}>
+              <Icon name="tune-variant" size={16} color="#FFFFFF" />
+              <Txt variant="micro" color="#FFFFFF">
+                {t('home.preview')}
+              </Txt>
+            </PressableScale>
+          </View>
+          {previewOpen ? (
+            <View style={{ gap: space.sm }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.xs }}>
+                <PreviewChip label={t('home.live')} icon="broadcast" selected={!weather.previewKind} onPress={() => weather.setPreview(null)} />
+                {WEATHER_KINDS.map((k) => (
+                  <PreviewChip key={k} label={t(`weather.${k}`)} icon={WEATHER_ICON[k]} selected={weather.previewKind === k} onPress={() => weather.setPreview(k)} />
+                ))}
+              </ScrollView>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.xs }}>
+                {SEASONS.map((s) => (
+                  <PreviewChip
+                    key={s}
+                    label={t(`season.${s}`)}
+                    icon={s === 'spring' ? 'flower-outline' : s === 'summer' ? 'white-balance-sunny' : s === 'autumn' ? 'leaf' : 'snowflake'}
+                    selected={weather.previewSeason === s}
+                    onPress={() => weather.setPreviewSeason(weather.previewSeason === s ? null : s)}
+                  />
+                ))}
+              </ScrollView>
+            </View>
+          ) : null}
+        </View>
+
+        {!tourSeen ? (
+          <PressableScale onPress={() => router.push('/tour')} accessibilityRole="button" style={[styles.tourBanner, { backgroundColor: c.tag }]}>
+            <View style={[styles.tourIcon, { backgroundColor: c.tagInk }]}>
+              <Icon name="play" size={20} color={c.tag} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Txt variant="bodyBold" color={c.tagInk}>
+                {t('home.tourTitle')}
+              </Txt>
+              <Txt variant="small" color={c.tagInk}>
+                {t('home.tourBody')}
+              </Txt>
+            </View>
+            <Icon name="chevron-right" size={22} color={c.tagInk} />
+          </PressableScale>
+        ) : null}
+
+        {/* quick actions */}
+        <View style={{ gap: space.sm }}>
+          <Txt variant="heading">{t('home.quick')}</Txt>
+          <View style={styles.grid}>
+            {actions.map((a) => (
+              <PressableScale
+                key={a.label}
+                onPress={() => {
+                  haptics.tap();
+                  a.go();
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={a.label}
+                style={[
+                  styles.tile,
+                  { width: tileWidth },
+                  width < 380 && { padding: 10 },
+                  {
+                    backgroundColor: a.primary ? c.tag : a.danger ? 'rgba(229,56,59,0.14)' : c.surface,
+                    borderColor: a.primary ? c.tag : a.danger ? 'rgba(229,56,59,0.45)' : c.line,
+                  },
+                ]}>
+                <View style={[styles.tileIcon, { backgroundColor: a.primary ? c.tagInk : a.danger ? RED : c.surfaceAlt }]}>
+                  <Icon name={a.icon} size={20} color={a.primary ? c.tag : a.danger ? '#FFFFFF' : c.ink} />
+                </View>
+                <Txt variant="small" color={a.primary ? c.tagInk : c.ink} numberOfLines={2} style={[{ fontFamily: fonts.bodyBold }, width < 380 && { fontSize: 12.5, lineHeight: 16 }]}>
+                  {a.label}
+                </Txt>
+              </PressableScale>
+            ))}
+          </View>
+        </View>
+
+        {/* admin: open reports per department; student: points */}
+        {isAdmin && stats ? (
+          <Card style={{ gap: space.sm }}>
+            <Txt variant="heading">{t('home.departments')}</Txt>
+            {stats.byDepartment.map((d) => (
+              <PressableScale
+                key={d.id}
+                onPress={() => router.navigate({ pathname: '/admin', params: { department: String(d.id) } })}
+                accessibilityRole="button"
+                accessibilityLabel={`${t(`dept.${d.name}`)}, ${d.open}`}
+                style={[styles.deptRow, { borderColor: c.line }]}>
+                <View style={[styles.deptIcon, { backgroundColor: c.surfaceAlt }]}>
+                  <Icon name={d.icon} size={18} />
+                </View>
+                <Txt variant="bodyBold" style={{ flex: 1 }} numberOfLines={1}>
+                  {t(`dept.${d.name}`)}
+                </Txt>
+                <Txt variant="number" tone={d.open ? 'ink' : 'faint'}>
+                  {d.open}
+                </Txt>
+                <Icon name="chevron-right" size={20} color={c.inkFaint} />
+              </PressableScale>
+            ))}
+          </Card>
+        ) : null}
+        {!isAdmin && me ? (
+          <PressableScale onPress={() => router.navigate('/profile')} accessibilityRole="button" style={[styles.points, { backgroundColor: c.surface, borderColor: c.line }]}>
+            <Icon name="star-four-points" size={22} />
+            <View style={{ flex: 1 }}>
+              <Txt variant="small" tone="soft">
+                {t('home.yourPoints')}
+              </Txt>
+              <Txt variant="bodyBold">{me.level.name}</Txt>
+            </View>
+            <Txt variant="display" style={{ fontSize: 30, lineHeight: 34 }}>
+              {me.points}
+            </Txt>
+          </PressableScale>
+        ) : null}
+
+        {health ? <HealthCard health={health} /> : null}
+
+        <View style={{ gap: space.md }}>
+          <View style={styles.sectionHead}>
+            <Txt variant="heading">{t('home.latest')}</Txt>
+            <Pressable onPress={() => router.navigate('/issues')} accessibilityRole="button" hitSlop={10}>
+              <Txt variant="small" tone="soft">
+                {t('common.seeAll')}
+              </Txt>
+            </Pressable>
+          </View>
+          {latest === null ? <Skeleton rows={2} /> : latest.map((issue) => <IssueCard key={issue.id} issue={issue} onChange={(u) => setLatest((l) => l?.map((x) => (x.id === u.id ? u : x)) ?? null)} />)}
+        </View>
+      </ScrollView>
+      <LanguageSheet open={langOpen} onClose={() => setLangOpen(false)} />
     </Screen>
   );
 }
 
+function PreviewChip({ label, icon, selected, onPress }: { label: string; icon: string; selected: boolean; onPress: () => void }) {
+  return (
+    <PressableScale
+      feedback="select"
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={label}
+      style={[styles.previewChip, { backgroundColor: selected ? '#FFFFFF' : 'rgba(255,255,255,0.10)', borderColor: selected ? '#FFFFFF' : 'rgba(255,255,255,0.22)' }]}>
+      <Icon name={icon} size={15} color={selected ? '#0A0A0B' : '#FFFFFF'} />
+      <Txt variant="micro" color={selected ? '#0A0A0B' : '#FFFFFF'}>
+        {label}
+      </Txt>
+    </PressableScale>
+  );
+}
+
 const styles = StyleSheet.create({
-  list: { padding: space.lg, paddingBottom: space.xxl },
-  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md },
+  content: { padding: space.lg, paddingBottom: TAB_CLEARANCE, gap: space.lg, width: '100%', maxWidth: MAX_WIDTH, alignSelf: 'center' },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, minHeight: 36, borderRadius: radius.pill },
-  searchRow: { flexDirection: 'row', gap: space.sm },
-  search: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.sm, borderWidth: 1, borderRadius: radius.md, paddingHorizontal: 12, minHeight: 48 },
-  searchInput: { flex: 1, fontFamily: fonts.body, fontSize: 15, paddingVertical: 8, outlineWidth: 0 } as any,
-  filterButton: { minWidth: 48, height: 48, paddingHorizontal: 12, borderRadius: radius.md, borderWidth: 1, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  iconPill: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  weather: { borderRadius: 28, borderWidth: 1, padding: space.lg, gap: space.md, overflow: 'hidden', minHeight: 260 },
+  weatherRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  bubble: { alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 16, borderTopLeftRadius: 4, paddingHorizontal: 12, paddingVertical: 8, maxWidth: '100%' },
+  sourceRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  previewBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.12)' },
+  previewChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, minHeight: 32, borderRadius: radius.pill, borderWidth: 1 },
+  tourBanner: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md, borderRadius: radius.lg },
+  tourIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  tile: { minHeight: 96, borderRadius: radius.lg, borderWidth: 1, padding: space.md, gap: space.sm, justifyContent: 'space-between' },
+  tileIcon: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  deptRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.sm, borderTopWidth: 1 },
+  deptIcon: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  points: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg, borderRadius: radius.lg, borderWidth: 1 },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 });

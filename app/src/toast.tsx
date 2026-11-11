@@ -6,7 +6,9 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GlassEdge } from './components/Glass';
 import { Icon, IconName, Txt } from './components/ui';
+import { haptics } from './haptics';
 import { MAX_WIDTH, radius, space, useTheme } from './theme';
 
 export type Toast = {
@@ -56,6 +58,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     if ((current.kind === 'badge' || current.kind === 'level') && !reduceMotion.current) {
       setConfettiKey((key) => key + 1);
     }
+    // A vibration that matches the news: success for rewards, a buzz for errors.
+    if (current.kind === 'error') haptics.error();
+    else if (current.kind === 'info') haptics.tap();
+    else haptics.success();
     AccessibilityInfo.announceForAccessibility(current.body ? `${current.title}. ${current.body}` : current.title);
     const timer = setTimeout(dismiss, VISIBLE_MS);
     return () => clearTimeout(timer);
@@ -65,8 +71,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const celebrate = current && (current.kind === 'badge' || current.kind === 'level' || current.kind === 'points');
   const error = current?.kind === 'error';
-  const background = error ? c.danger : celebrate ? c.tag : c.ink;
-  const foreground = error ? c.surface : celebrate ? c.tagInk : c.bg;
+  const background = error ? '#3A1614' : celebrate ? c.tag : c.solidAlt;
+  const foreground = error ? c.danger : celebrate ? c.tagInk : c.ink;
   const iconName: IconName | string =
     current?.icon ??
     (current?.kind === 'points' ? 'star-four-points' : current?.kind === 'level' ? 'arrow-up-bold-circle' : current?.kind === 'error' ? 'alert-circle-outline' : 'check-circle');
@@ -83,7 +89,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             explosionSpeed={320}
             fallSpeed={2200}
             fadeOut
-            colors={[c.tag, '#2F6FED', '#2F9E44', '#E8590C', c.ink]}
+            colors={['#FFFFFF', '#E5E5EA', '#AEAEB2', '#8E8E93', '#48484A']}
           />
         </View>
       ) : null}
@@ -94,9 +100,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               width: '100%',
               maxWidth: MAX_WIDTH - 2 * space.lg,
               opacity: slide,
-              transform: [{ translateY: slide.interpolate({ inputRange: [0, 1], outputRange: [-24, 0] }) }],
+              transform: [{ translateY: slide.interpolate({ inputRange: [0, 1], outputRange: [-24, 0] }) }, { scale: slide.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) }],
             }}>
-            <Pressable onPress={dismiss} accessibilityRole="alert" style={[styles.toast, { backgroundColor: background }]}>
+            <Pressable onPress={dismiss} accessibilityRole="alert" style={[styles.toast, { backgroundColor: background, borderColor: celebrate ? background : c.lineStrong }]}>
+              <GlassEdge radius={radius.lg} />
               <Icon name={iconName} size={26} color={foreground} />
               <View style={{ flex: 1 }}>
                 <Txt variant="heading" color={foreground}>
@@ -118,5 +125,5 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
 const styles = StyleSheet.create({
   host: { position: 'absolute', left: space.lg, right: space.lg, alignItems: 'center' },
-  toast: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.md, paddingHorizontal: space.lg, borderRadius: radius.lg },
+  toast: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.md, paddingHorizontal: space.lg, borderRadius: radius.lg, borderWidth: 1, overflow: 'hidden' },
 });

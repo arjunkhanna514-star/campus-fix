@@ -10,11 +10,15 @@ import { BadgeList, LevelBar } from '@/src/components/Progress';
 import { ServerStatus } from '@/src/components/ServerStatus';
 import { Avatar, Button, Card, Icon, Loading, Screen, Txt } from '@/src/components/ui';
 import { initials, ordinal, timeAgo } from '@/src/format';
+import { LanguageSheet } from '@/src/components/LanguagePicker';
+import { LANGUAGES, useI18n } from '@/src/i18n';
 import { useSession } from '@/src/session';
-import { space, useTheme } from '@/src/theme';
+import { space, TAB_CLEARANCE, useTheme } from '@/src/theme';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
+  const { t, lang } = useI18n();
+  const [langOpen, setLangOpen] = useState(false);
   const { me, meta, refreshMe } = useSession();
   const { c, status } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
@@ -159,8 +163,16 @@ export default function ProfileScreen() {
           <ServerStatus />
         </Card>
 
+        <Card style={{ gap: 0, paddingVertical: space.xs }}>
+          <SettingRow icon="translate" label={t('common.language')} value={LANGUAGES.find((l) => l.code === lang)?.name} onPress={() => setLangOpen(true)} />
+          <SettingRow icon="play-circle-outline" label={t('home.tour')} onPress={() => router.push('/tour')} />
+          <SettingRow icon="qrcode" label={t('share.row')} onPress={() => router.push('/share')} />
+          <SettingRow icon="phone-alert" label={t('common.emergency')} onPress={() => router.push('/emergency')} />
+        </Card>
+
         <Button label="Log out" icon="logout" variant="danger" onPress={logout} />
       </ScrollView>
+      <LanguageSheet open={langOpen} onClose={() => setLangOpen(false)} />
     </Screen>
   );
 }
@@ -176,8 +188,30 @@ function Stat({ value, label }: { value: number; label: string }) {
   );
 }
 
+function SettingRow({ icon, label, value, onPress }: { icon: string; label: string; value?: string; onPress: () => void }) {
+  const { c } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={value ? `${label}: ${value}` : label}
+      style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.md, opacity: pressed ? 0.6 : 1 }]}>
+      <Icon name={icon} size={20} color={c.inkSoft} />
+      <Txt variant="bodyBold" style={{ flex: 1 }}>
+        {label}
+      </Txt>
+      {value ? (
+        <Txt variant="small" tone="soft">
+          {value}
+        </Txt>
+      ) : null}
+      <Icon name="chevron-right" size={20} color={c.inkFaint} />
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  content: { padding: space.lg, paddingBottom: space.xxl, gap: space.lg },
+  content: { padding: space.lg, paddingBottom: TAB_CLEARANCE, gap: space.lg },
   identity: { flexDirection: 'row', alignItems: 'center', gap: space.lg },
   levelTop: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
   stats: { flexDirection: 'row', gap: space.md },

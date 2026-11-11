@@ -10,5 +10,5 @@ export default function AuthLayout() {
   const { user } = useAuth();
   const { c } = useTheme();
   if (user) return <Redirect href="/" />;
-  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.bg }, animation: 'fade' }} />;
+  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.bg }, animation: 'fade_from_bottom' }} />;
 }

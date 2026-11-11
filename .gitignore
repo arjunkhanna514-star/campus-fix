@@ -5,7 +5,11 @@ dist/
 # local database and uploaded photos are created when the server runs
 server/campus.db
 server/campus.db-*
-server/test/smoke-test.db*
+server/test/smoke-*.db*
 server/uploads/*
 !server/uploads/.gitkeep
 .env
+server/.public-url
+
+# The web build is committed so the free cloud host can serve it without building it.
+!app/dist/

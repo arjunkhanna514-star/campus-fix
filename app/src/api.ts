@@ -6,6 +6,9 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { getItem, removeItem, setItem } from './storage';
 
+// The always-on copy of the server on Vercel's free plan (see vercel.json).
+export const HOSTED_URL = 'https://campus-fix-mcast.vercel.app/api';
+
 const PORT = 4000;
 const CUSTOM_URL_KEY = 'server_url';
 
@@ -45,13 +48,18 @@ async function candidateUrls(): Promise<string[]> {
   const hostUri = Constants.expoConfig?.hostUri;
   const devHost = hostUri ? hostUri.split(':')[0] : null;
   if (Platform.OS === 'web') {
-    const pageHost = typeof window !== 'undefined' ? window.location?.hostname : null;
+    const loc = typeof window !== 'undefined' ? window.location : null;
+    // Served by the Campus Fix server itself (the shared link): the API is on the same address.
+    if (loc && loc.port !== '8081' && loc.port !== '19006') list.unshift(`${loc.origin}/api`);
+    const pageHost = loc?.hostname;
     if (pageHost) list.push(`http://${pageHost}:${PORT}`);
   } else if (devHost && devHost !== 'localhost' && devHost !== '127.0.0.1') {
     list.push(`http://${devHost}:${PORT}`);
   }
   if (Platform.OS === 'android') list.push(`http://10.0.2.2:${PORT}`);
   list.push(`http://localhost:${PORT}`);
+  // Last of all, the hosted copy that runs in the cloud, so the phone app works with the laptop switched off.
+  list.push(HOSTED_URL);
 
   return [...new Set(list.map((url) => url.replace(/\/+$/, '')))];
 }
@@ -95,8 +103,12 @@ export async function saveCustomServer(input: string): Promise<boolean> {
     return (await findServer(true)) !== null;
   }
   if (!/^https?:\/\//i.test(url)) url = `http://${url}`;
-  if (!/:\d+$/.test(url)) url = `${url}:${PORT}`;
-  if (!(await isServer(url))) return false;
+  // A plain http address without a port means the laptop's port 4000; an https link (the shared one) is used as it is.
+  if (/^http:\/\//i.test(url) && !/:\d+$/.test(url)) url = `${url}:${PORT}`;
+  if (!(await isServer(url))) {
+    if (await isServer(`${url}/api`)) url = `${url}/api`;
+    else return false;
+  }
   await setItem(CUSTOM_URL_KEY, url);
   baseUrl = url;
   return true;

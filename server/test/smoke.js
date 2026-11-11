@@ -31,9 +31,10 @@ let server;
 async function startServer() {
   server = spawn(process.execPath, [path.join(__dirname, '..', 'src', 'index.js')], {
     env: { ...process.env, PORT: String(PORT), DB_PATH: TEST_DB },
-    stdio: 'ignore',
+    stdio: ['ignore', 'ignore', 'inherit'], // show server errors in this terminal
   });
-  for (let i = 0; i < 50; i++) {
+  // Slow laptops (and antivirus scanning node_modules) can take a while on the first start.
+  for (let i = 0; i < 300; i++) {
     try {
       const res = await fetch(`${BASE}/health`);
       if (res.ok) return;
@@ -42,7 +43,7 @@ async function startServer() {
     }
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
-  throw new Error('Server did not start');
+  throw new Error('Server did not start within 60 seconds. Run "npm run server" to see why.');
 }
 function stopServer() {
   return new Promise((resolve) => {
@@ -114,6 +115,19 @@ async function main() {
   const meta = await api('GET', '/meta', { token: reporter });
   const avCategory = meta.json.categories.find((c) => c.name === 'Projector & AV');
   check('meta lists 9 categories and the buildings', meta.json.categories.length === 9 && meta.json.buildings.includes('Block A'));
+  const departments = meta.json.departments || [];
+  const itDept = departments.find((d) => d.name === 'IT Services');
+  check('meta lists 5 departments and every category belongs to one', departments.length === 5 && meta.json.categories.every((c) => departments.some((d) => d.id === c.department_id)));
+  check('every report carries its department', feed.json.every((i) => i.department && i.department.name));
+  const itFeed = await api('GET', `/issues?department=${itDept.id}`, { token: reporter });
+  check('department filter returns only that department', itFeed.status === 200 && itFeed.json.length > 0 && itFeed.json.length < 20 && itFeed.json.every((i) => i.department.id === itDept.id));
+  const deptTotal = (await Promise.all(departments.map((d) => api('GET', `/issues?department=${d.id}`, { token: reporter })))).reduce((n, r) => n + r.json.length, 0);
+  check('the departments together cover every report exactly once', deptTotal === 20);
+  const blockA = await api('GET', `/issues?building=${encodeURIComponent('Block A')}`, { token: reporter });
+  check('building filter returns only that building', blockA.status === 200 && blockA.json.every((i) => i.building === 'Block A'));
+  check('department and building filters combine', (await api('GET', `/issues?department=${itDept.id}&building=${encodeURIComponent('Block A')}`, { token: reporter })).json.every((i) => i.building === 'Block A' && i.department.id === itDept.id));
+  check('a non-number department filter is refused (400)', (await api('GET', '/issues?department=abc', { token: reporter })).status === 400);
+  check('an unknown building filter is refused (400)', (await api('GET', '/issues?building=Hogwarts', { token: reporter })).status === 400);
 
   // ----- reporting -----
   const newIssue = {
@@ -236,8 +250,44 @@ async function main() {
   const health = await api('GET', '/campus-health', { token: reporter });
   check('campus health counts recent fixes (8 seeded + 1 new)', health.json.resolvedLast30Days === 9 && health.json.goal === 20);
   const stats = await api('GET', '/admin/stats', { token: admin });
+  check('admin stats count open problems per department', (stats.json.byDepartment || []).length === 5 && stats.json.byDepartment.reduce((n, d) => n + d.open, 0) === stats.json.open);
   check('admin stats add up', stats.status === 200 && stats.json.total === 22 && stats.json.byStatus.Resolved === 9 && stats.json.topOpen.length === 3);
+  const sneaky = await api('POST', '/issues', { token: voter, body: { ...newIssue, title: 'Projector lamp is dead again', department_id: 999, department: 'Cleaning Services' } });
+  check('a student cannot choose the department: it follows the category', sneaky.status === 201 && sneaky.json.issue.department.name === 'IT Services');
   check('unknown route gives a JSON 404', (await api('GET', '/nope', { token: reporter })).status === 404);
+
+  // ----- comments -----
+  const chloe = (await login('chloe@campus.test', 'Student123!')).token;
+  const c1 = await api('POST', `/issues/${issueId}/comments`, { token: chloe, body: { body: 'Still flickering in the morning lecture.' } });
+  check('a student can comment on a report (201)', c1.status === 201 && c1.json.comments.length === 1 && c1.json.comments[0].isMine === true);
+  const c2 = await api('POST', `/issues/${issueId}/comments`, { token: admin, body: { body: 'Thanks, the technician will check it again.' } });
+  check('admin replies show the staff role', c2.status === 201 && c2.json.comments[1].user.role === 'admin');
+  check('an empty comment is rejected (400)', (await api('POST', `/issues/${issueId}/comments`, { token: chloe, body: { body: ' ' } })).status === 400);
+  check('a comment over 500 characters is rejected (400)', (await api('POST', `/issues/${issueId}/comments`, { token: chloe, body: { body: 'x'.repeat(501) } })).status === 400);
+  check('commenting on a missing report gives 404', (await api('POST', '/issues/99999/comments', { token: chloe, body: { body: 'Hello there' } })).status === 404);
+  check('commenting needs a login (401)', (await api('POST', `/issues/${issueId}/comments`, { body: { body: 'Hello there' } })).status === 401);
+  const withComments = await api('GET', `/issues/${issueId}`, { token: reporter });
+  check('comments show on the report, oldest first', withComments.json.comments.map((m) => m.user.role).join() === 'student,admin' && withComments.json.comments[0].isMine === false);
+  check('the feed shows the comment count', (await api('GET', '/issues?mine=1', { token: reporter })).json.find((i) => i.id === issueId).commentCount === 2);
+  check('comments earn no points (reporter still on 52)', (await pointsOf(reporter)) === 52);
+
+  // ----- photo of the fix -----
+  const inProgress = (await api('GET', `/issues?status=${encodeURIComponent('In Progress')}`, { token: admin })).json[0];
+  const ackForm = new FormData();
+  ackForm.append('status', 'Resolved');
+  ackForm.append('photo', new Blob([TINY_PNG], { type: 'image/png' }), 'fix.png');
+  const earlyPhoto = await api('PATCH', `/admin/issues/${(await api('GET', '/issues?status=Reported', { token: admin })).json[0].id}/status`, {
+    token: admin,
+    form: (() => { const f = new FormData(); f.append('status', 'Acknowledged'); f.append('photo', new Blob([TINY_PNG], { type: 'image/png' }), 'fix.png'); return f; })(),
+  });
+  check('a fix photo is refused before the Resolved step (400)', earlyPhoto.status === 400);
+  const resolvedWithPhoto = await api('PATCH', `/admin/issues/${inProgress.id}/status`, { token: admin, form: ackForm });
+  check('admin can resolve with a photo of the fix', resolvedWithPhoto.status === 200 && resolvedWithPhoto.json.issue.status === 'Resolved');
+  const fixed = await api('GET', `/issues/${inProgress.id}`, { token: reporter });
+  const fixPhoto = fixed.json.history.find((h) => h.new_status === 'Resolved').photo_path;
+  check('the fix photo is saved on the Resolved step', /^\/uploads\/.+\.png$/.test(fixPhoto || ''));
+  check('the fix photo can be downloaded', (await fetch(BASE + fixPhoto)).status === 200);
+  check('a student cannot upload a fix photo (403)', (await api('PATCH', `/admin/issues/${inProgress.id}/status`, { token: chloe, body: { status: 'Resolved' } })).status === 403);
 
   // ----- persistence -----
   db.close();
@@ -247,6 +297,26 @@ async function main() {
   const afterRestart = await api('GET', `/issues/${issueId}`, { token: again.token });
   check('data survives a server restart', afterRestart.status === 200 && afterRestart.json.status === 'Resolved' && afterRestart.json.upvotes === 1);
   check('points survive a server restart', (await pointsOf(again.token)) === 52);
+
+  // ----- an older database gets the new column without losing data -----
+  const { spawnSync } = require('child_process');
+  const OLD_DB = path.join(__dirname, 'smoke-old.db');
+  for (const suffix of ['', '-wal', '-shm']) fs.rmSync(OLD_DB + suffix, { force: true });
+  const oldSetup = `
+    const { DatabaseSync } = require('node:sqlite');
+    const d = new DatabaseSync(${JSON.stringify(OLD_DB)});
+    d.exec("CREATE TABLE status_history (id INTEGER PRIMARY KEY, issue_id INTEGER NOT NULL, old_status TEXT, new_status TEXT NOT NULL, changed_by INTEGER NOT NULL, note TEXT, changed_at TEXT NOT NULL DEFAULT (datetime('now')))");
+    d.exec("INSERT INTO status_history (issue_id, new_status, changed_by) VALUES (1, 'Reported', 1)");
+    d.exec("CREATE TABLE categories (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE, icon TEXT NOT NULL)");
+    d.exec("INSERT INTO categories (name, icon) VALUES ('Safety', 'shield-alert'), ('Something new', 'help')");
+    d.close();`;
+  spawnSync(process.execPath, ['-e', oldSetup], { stdio: 'ignore' });
+  const migrate = spawnSync(process.execPath, ['-e', `const { db } = require(${JSON.stringify(path.join(__dirname, '..', 'src', 'db.js'))}); const cols = db.prepare('PRAGMA table_info(status_history)').all().map((c) => c.name); const rows = db.prepare('SELECT COUNT(*) AS n FROM status_history').get().n; const cats = db.prepare('SELECT c.name, d.name AS dept FROM categories c LEFT JOIN departments d ON d.id = c.department_id ORDER BY c.id').all(); console.log(JSON.stringify({ cols, rows, cats })); db.close();`], { env: { ...process.env, DB_PATH: OLD_DB }, encoding: 'utf8' });
+  let migrated = null;
+  try { migrated = JSON.parse(migrate.stdout.trim().split('\n').pop()); } catch (err) { /* reported below */ }
+  check('an older database gains the photo column and keeps its rows', !!migrated && migrated.cols.includes('photo_path') && migrated.rows === 1);
+  check('an older database gains departments for its categories', !!migrated && JSON.stringify(migrated.cats) === JSON.stringify([{ name: 'Safety', dept: 'Health & Safety' }, { name: 'Something new', dept: 'Student Services' }]));
+  for (const suffix of ['', '-wal', '-shm']) fs.rmSync(OLD_DB + suffix, { force: true });
 
   await stopServer();
   removeTestDb();

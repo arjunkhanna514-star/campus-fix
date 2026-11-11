@@ -54,6 +54,14 @@ const issueSchema = z.object({
   impact: z.enum(IMPACTS, { error: 'Impact must be Low, Medium or High' }).default('Medium'),
 });
 
+const commentSchema = z.object({
+  body: z
+    .string({ error: 'Write a comment first' })
+    .trim()
+    .min(2, 'Write at least 2 characters')
+    .max(500, 'Comments must be 500 characters or fewer'),
+});
+
 const statusSchema = z.object({
   status: z.enum(STATUSES, { error: 'Unknown status' }),
   note: optionalText(200, 'Note'),
@@ -68,4 +76,4 @@ function parse(schema, data) {
   return result.data;
 }
 
-module.exports = { registerSchema, loginSchema, issueSchema, statusSchema, parse };
+module.exports = { registerSchema, loginSchema, issueSchema, commentSchema, statusSchema, parse };

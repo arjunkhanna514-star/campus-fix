@@ -1,18 +1,19 @@
 // Admin-only routes: move a report to its next status, and see the numbers.
 
 const express = require('express');
+const fs = require('fs');
 const { db, transaction } = require('../db');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { HttpError } = require('../middleware/errors');
 const { statusSchema, parse } = require('../validation');
 const { STATUSES, NEXT_STATUS } = require('../config');
 const { POINTS, award, checkBadges } = require('../gamification');
-const { ISSUE_SELECT, toIssue, getIssue } = require('./issues');
+const { ISSUE_SELECT, toIssue, getIssue, upload } = require('./issues');
 
 const router = express.Router();
 router.use(requireAuth, requireAdmin);
 
-const changeStatus = transaction((admin, issueId, newStatus, note) => {
+const changeStatus = transaction((admin, issueId, newStatus, note, photoPath) => {
   const issue = db.prepare('SELECT id, reporter_id, status FROM issues WHERE id = ?').get(issueId);
   if (!issue) throw new HttpError(404, 'This report does not exist.');
 
@@ -30,13 +31,9 @@ const changeStatus = transaction((admin, issueId, newStatus, note) => {
     .run(newStatus, issueId, issue.status);
   if (Number(info.changes) !== 1) throw new HttpError(409, 'This report was just updated by someone else. Refresh and try again.');
 
-  db.prepare('INSERT INTO status_history (issue_id, old_status, new_status, changed_by, note) VALUES (?, ?, ?, ?, ?)').run(
-    issueId,
-    issue.status,
-    newStatus,
-    admin.id,
-    note
-  );
+  db.prepare(
+    'INSERT INTO status_history (issue_id, old_status, new_status, changed_by, note, photo_path) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(issueId, issue.status, newStatus, admin.id, note, photoPath);
 
   // The reporter is rewarded when staff confirm the report and when it is fixed.
   if (newStatus === 'Acknowledged') {
@@ -48,13 +45,23 @@ const changeStatus = transaction((admin, issueId, newStatus, note) => {
   checkBadges(issue.reporter_id);
 });
 
-router.patch('/issues/:id/status', (req, res) => {
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id <= 0) throw new HttpError(400, 'Issue id must be a number.');
-  const { status, note } = parse(statusSchema, req.body);
+// Accepts JSON, or a multipart form when the admin attaches a photo of the fix.
+router.patch('/issues/:id/status', upload.single('photo'), (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) throw new HttpError(400, 'Issue id must be a number.');
+    const { status, note } = parse(statusSchema, req.body);
+    if (req.file && status !== 'Resolved') {
+      throw new HttpError(400, 'A photo of the fix can only be added when marking a report resolved.');
+    }
 
-  changeStatus(req.user, id, status, note);
-  res.json({ issue: getIssue(id, req.user.id) });
+    const photoPath = req.file ? `/uploads/${req.file.filename}` : null;
+    changeStatus(req.user, id, status, note, photoPath);
+    res.json({ issue: getIssue(id, req.user.id) });
+  } catch (err) {
+    if (req.file) fs.unlink(req.file.path, () => {}); // keep no photo for a change that was refused
+    throw err;
+  }
 });
 
 router.get('/stats', (req, res) => {
@@ -68,6 +75,17 @@ router.get('/stats', (req, res) => {
       `SELECT c.id, c.name, c.icon, COUNT(i.id) AS open
        FROM categories c JOIN issues i ON i.category_id = c.id AND i.status <> 'Resolved'
        GROUP BY c.id ORDER BY open DESC, c.name LIMIT 5`
+    )
+    .all();
+
+  // Open problems per department, including departments with none.
+  const byDepartment = db
+    .prepare(
+      `SELECT d.id, d.name, d.icon, COUNT(i.id) AS open
+       FROM departments d
+       LEFT JOIN categories c ON c.department_id = d.id
+       LEFT JOIN issues i ON i.category_id = c.id AND i.status <> 'Resolved'
+       GROUP BY d.id ORDER BY d.id`
     )
     .all();
 
@@ -89,6 +107,7 @@ router.get('/stats', (req, res) => {
     total: Object.values(counts).reduce((a, b) => a + b, 0),
     open: counts.Reported + counts.Acknowledged + counts['In Progress'],
     byCategory,
+    byDepartment,
     topOpen,
     avgResolveHours: resolveTime.hours === null ? null : Math.round(resolveTime.hours),
   });

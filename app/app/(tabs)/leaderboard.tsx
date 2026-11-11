@@ -7,7 +7,7 @@ import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { api, errorMessage } from '@/src/api';
 import { Avatar, Card, EmptyState, Loading, Notice, Screen, Segmented, Txt } from '@/src/components/ui';
 import { initials, ordinal } from '@/src/format';
-import { radius, space, useTheme } from '@/src/theme';
+import { radius, space, TAB_CLEARANCE, useTheme } from '@/src/theme';
 import type { Leaderboard, LeaderRow } from '@/src/types';
 
 type Period = 'week' | 'all';
@@ -156,7 +156,7 @@ function Row({ row, divider }: { row: LeaderRow; divider: boolean }) {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: space.lg, paddingBottom: space.xxl, gap: space.lg },
+  content: { padding: space.lg, paddingBottom: TAB_CLEARANCE, gap: space.lg },
   podium: { flexDirection: 'row', alignItems: 'flex-end', gap: space.sm, paddingTop: space.sm },
   place: { flex: 1, alignItems: 'center', gap: 3 },
   block: { alignSelf: 'stretch', marginTop: space.sm, borderTopLeftRadius: radius.md, borderTopRightRadius: radius.md, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },

@@ -27,7 +27,8 @@ function ranking(sinceDays) {
 // Lists that never change while the app runs, sent once after login.
 router.get('/meta', (req, res) => {
   res.json({
-    categories: db.prepare('SELECT id, name, icon FROM categories ORDER BY id').all(),
+    categories: db.prepare('SELECT id, name, icon, department_id FROM categories ORDER BY id').all(),
+    departments: db.prepare('SELECT id, name, icon FROM departments ORDER BY id').all(),
     buildings: BUILDINGS,
     impacts: IMPACTS,
     statuses: STATUSES,

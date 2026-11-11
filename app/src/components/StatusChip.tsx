@@ -3,6 +3,7 @@
 
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useT } from '../i18n';
 import { fonts, radius, useTheme } from '../theme';
 import type { Status } from '../types';
 import { Icon, IconName } from './ui';
@@ -23,11 +24,13 @@ export const STATUS_LABEL: Record<Status, string> = {
 
 export function StatusChip({ status, large }: { status: Status; large?: boolean }) {
   const { status: colours } = useTheme();
+  const t = useT();
   const colour = colours[status];
+  const label = t(`status.${status}`);
   return (
-    <View style={[styles.chip, large && styles.large, { backgroundColor: colour.bg }]} accessibilityLabel={`Status: ${STATUS_LABEL[status]}`}>
+    <View style={[styles.chip, large && styles.large, { backgroundColor: colour.bg }]} accessibilityLabel={`${t('filter.status')}: ${label}`}>
       <Icon name={STATUS_ICON[status]} size={large ? 17 : 14} color={colour.fg} />
-      <Text style={[styles.text, large && { fontSize: 14 }, { color: colour.fg }]}>{STATUS_LABEL[status]}</Text>
+      <Text style={[styles.text, large && { fontSize: 14 }, { color: colour.fg }]}>{label}</Text>
     </View>
   );
 }

@@ -14,9 +14,11 @@ import React, { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider, useAuth } from '@/src/auth';
+import { I18nProvider } from '@/src/i18n';
 import { SessionProvider } from '@/src/session';
 import { useTheme } from '@/src/theme';
 import { ToastProvider } from '@/src/toast';
+import { WeatherProvider } from '@/src/weather';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -36,13 +38,17 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <ToastProvider>
-          <SessionProvider>
-            <Navigation />
-          </SessionProvider>
-        </ToastProvider>
-      </AuthProvider>
+      <I18nProvider>
+        <WeatherProvider>
+          <AuthProvider>
+            <ToastProvider>
+              <SessionProvider>
+                <Navigation />
+              </SessionProvider>
+            </ToastProvider>
+          </AuthProvider>
+        </WeatherProvider>
+      </I18nProvider>
     </SafeAreaProvider>
   );
 }
@@ -63,7 +69,8 @@ function Navigation() {
   return (
     <ThemeProvider value={navTheme}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.bg } }} />
+      {/* Screens slide in from the right and the previous one parallaxes away, instead of cutting. */}
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.bg }, animation: 'ios_from_right', gestureEnabled: true }} />
     </ThemeProvider>
   );
 }

@@ -24,12 +24,22 @@ Emulator 1 is Alice. Emulator 2 is Ben, then the admin.
 | 9 | 2:45 | Emulator 2: Profile, Log out. Tap Admin, Log in. Open Manage | "The admin sees the numbers and a queue sorted by upvotes. Students cannot open this, and the server answers 403 if they try." |
 | 10 | 3:05 | Emulator 2: open Alice's report. Type the note "Technician booked for Thursday". Mark as acknowledged | "Status moves one step at a time. The server refuses to skip a step." |
 | 11 | 3:20 | Emulator 1: watch Alice's report | "Alice gets plus 15, and the note appears in her timeline. Most points only arrive when staff confirm a report is real, so spam earns nothing." |
-| 12 | 3:40 | Emulator 2: Mark as in progress, then Mark as resolved | "In progress, then resolved." |
-| 13 | 3:50 | Emulator 1: watch the banners, then open Profile and Leaderboard | "Plus 25 and a level-up to Spotter. Her profile shows the level, badges and every ledger entry." |
+| 12 | 3:40 | Emulator 2: Mark as in progress. Then, before Mark as resolved, tap Choose a photo and add a photo of the fix. Also post a staff comment | "Staff can reply in the comments and attach a photo of the fix. Comments earn no points, so they can't be farmed." |
+| 13 | 3:50 | Emulator 1: point at Before and After the fix at the top, and the staff comment. Then open Profile and Leaderboard | "Alice sees the before and after photos, plus 25 and a level-up to Spotter. Her profile shows the level, badges and every ledger entry." |
+| 13b | 4:05 | Emulator 1: Map tab. Search "library", tap MRC Library, tap Directions, then 3D | "The campus map is traced from the official MCAST map. Directions use Dijkstra's shortest path along the walkways, with time, distance, arrival time and steps. Orange badges show open problems per block." |
+| 13c | 4:10 | Emulator 1: in the emulator's `...` menu, Location, enter 35.876811, 14.505382 and Set location. Map says "You are here, Block M". Directions to MRC Library, then set 35.876799, 14.506315 | "The phone's GPS places you on my map and checks which building you are in. Directions follow you as you walk and tell you when you arrive." |
+| 13d | 4:20 | Tap the globe, then SOS | "Satellite view shows the real campus. SOS has every number from MCAST's emergency poster, one tap to call, and shares your location." |
+| 13e | 4:25 | Emulator 1 Home: open "Preview the weather", tap Rain, Snow, Sunny, then open the Map | "Home shows live weather at MCAST from Open-Meteo. The mascot dresses for it, and the same weather animates over the campus map." |
+| 13f | 4:35 | Emulator 2 (admin) Manage: tap the IT Services tile | "Reports are grouped by the department that fixes them. Students never choose the department; it follows from the category." |
+| 13g | 4:45 | Language button, Italiano, then English. Then "How to use the app", Listen | "Ten languages. And a guided tour with a voice for new students." |
 | 14 | 4:15 | DB Browser: Browse Data, show `issues`, `upvotes`, `point_events`. Show the `upvotes` primary key in Database Structure | "Reports persist in SQLite. Points are a ledger, the total is a SUM, and nothing is ever edited." |
-| 15 | 4:40 | Terminal: `npm run smoke` (or show the last run) | "71 automatic checks, including the database refusing a duplicate upvote and data surviving a restart." |
+| 15 | 4:40 | Terminal: `npm run smoke` (or show the last run) | "97 automatic checks, including the database refusing a duplicate upvote and data surviving a restart." |
 
 ## If something goes wrong
+
+- **Location says "searching".** Set a location in the emulator's Extended controls (the `...` button), then tap Set location. Allow location when the app asks.
+- **The blue dot is a little off on the real campus.** Tap "Fix position" and choose the building you are standing at.
+- **Satellite stays blank.** It needs internet. The drawn map works offline.
 
 - **An emulator shows "Server not found".** Tap Try again. If that fails, run `adb -s <id> reverse tcp:4000 tcp:4000` and tap Try again.
 - **The data looks wrong.** `npm run seed` resets it. Log out and in again on both emulators.
@@ -40,3 +50,12 @@ Emulator 1 is Alice. Emulator 2 is Ben, then the admin.
 - Dark mode: switch the emulator to dark theme and the app follows.
 - Search and filters on the feed.
 - The server terminal logs every request live as you tap.
+
+## Demo GPS positions (emulator Extended controls, Location)
+
+| Where | Latitude | Longitude |
+|---|---|---|
+| Block M, Institute of ICT | 35.876811 | 14.505382 |
+| Block A, Institute of Applied Sciences | 35.877238 | 14.505466 |
+| Students' House | 35.877386 | 14.505934 |
+| MRC Library | 35.876799 | 14.506315 |

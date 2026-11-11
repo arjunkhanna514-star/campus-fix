@@ -2,16 +2,16 @@
 // is and what is wrong, and can attach a photo. Nothing here lets the student
 // choose who fixes it: that is the staff's decision.
 
-import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 
 import { api, errorMessage } from '@/src/api';
+import { appendPhoto, Photo, pickPhoto } from '@/src/photo';
 import { IssueCard } from '@/src/components/IssueCard';
 import { Button, Chip, Field, Icon, Notice, Screen, Segmented, Txt } from '@/src/components/ui';
 import { useSession } from '@/src/session';
-import { radius, space, useTheme } from '@/src/theme';
+import { radius, space, TAB_CLEARANCE, useTheme } from '@/src/theme';
 import { useToast } from '@/src/toast';
 import type { Impact, Issue } from '@/src/types';
 
@@ -21,8 +21,6 @@ const IMPACT_HELP: Record<Impact, string> = {
   High: 'Unsafe, or it stops classes from running.',
 };
 
-type Photo = { uri: string; name: string; type: string; file?: File };
-
 export default function ReportScreen() {
   const { meta, refreshMe } = useSession();
   const { c } = useTheme();
@@ -31,6 +29,12 @@ export default function ReportScreen() {
 
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [building, setBuilding] = useState<string | null>(null);
+
+  // "Report here" on the map opens this form with the building already chosen.
+  const { building: buildingParam } = useLocalSearchParams<{ building?: string }>();
+  useEffect(() => {
+    if (buildingParam && meta?.buildings.includes(buildingParam)) setBuilding(buildingParam);
+  }, [buildingParam, meta]);
   const [room, setRoom] = useState('');
   const [locationNote, setLocationNote] = useState('');
   const [title, setTitle] = useState('');
@@ -69,22 +73,10 @@ export default function ReportScreen() {
   const hasErrors = Object.values(errors).some(Boolean);
 
   const pick = async (source: 'camera' | 'library') => {
-    try {
-      if (source === 'camera') {
-        const permission = await ImagePicker.requestCameraPermissionsAsync();
-        if (!permission.granted) {
-          show({ kind: 'error', title: 'Camera access is off', body: 'Allow the camera in your phone settings, or choose a photo instead.' });
-          return;
-        }
-      }
-      const options: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], quality: 0.6 };
-      const result = source === 'camera' ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
-      if (result.canceled || !result.assets?.length) return;
-      const asset = result.assets[0];
-      setPhoto({ uri: asset.uri, name: asset.fileName || 'photo.jpg', type: asset.mimeType || 'image/jpeg', file: asset.file });
-    } catch {
-      show({ kind: 'error', title: 'Could not open the photo', body: 'Try again, or send the report without one.' });
-    }
+    const result = await pickPhoto(source);
+    if (!result) return;
+    if ('error' in result) show({ kind: 'error', title: result.error });
+    else setPhoto(result.photo);
   };
 
   const reset = () => {
@@ -118,16 +110,7 @@ export default function ReportScreen() {
       form.append('title', title.trim());
       form.append('description', description.trim());
       form.append('impact', impact);
-      if (photo) {
-        if (Platform.OS === 'web') {
-          // Browsers need a real file object.
-          const blob = photo.file ?? (await (await fetch(photo.uri)).blob());
-          form.append('photo', blob, photo.name);
-        } else {
-          // React Native sends the file straight from its location on the phone.
-          form.append('photo', { uri: photo.uri, name: photo.name, type: photo.type } as unknown as Blob);
-        }
-      }
+      if (photo) await appendPhoto(form, photo);
       const result = await api<{ issue: Issue }>('/issues', { method: 'POST', form });
       reset();
       scroll.current?.scrollTo({ y: 0, animated: false });
@@ -271,7 +254,7 @@ function Section({ title, error, children }: { title: string; error?: string | n
 }
 
 const styles = StyleSheet.create({
-  content: { padding: space.lg, paddingBottom: space.xxl * 2, gap: space.xl },
+  content: { padding: space.lg, paddingBottom: TAB_CLEARANCE + space.xl, gap: space.xl },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   twoFields: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md },
   similar: { borderRadius: radius.lg, padding: space.md, gap: space.md },

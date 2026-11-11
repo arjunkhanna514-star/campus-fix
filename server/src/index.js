@@ -1,47 +1,10 @@
 // Campus Fix API server.
 // Start with:  npm run dev   (restarts on changes)   or   npm start
 
-const express = require('express');
-const cors = require('cors');
 const os = require('os');
 const path = require('path');
-const { driver, DB_PATH } = require('./db');
+const { app, hasWebApp, driver, DB_PATH } = require('./app');
 const { PORT } = require('./config');
-const { seedIfEmpty } = require('./seed');
-const { notFound, errorHandler } = require('./middleware/errors');
-
-const app = express();
-
-app.use(cors());
-app.use(express.json({ limit: '100kb' }));
-
-// One line per request in the terminal: handy for watching the demo live.
-app.use((req, res, next) => {
-  const started = Date.now();
-  res.on('finish', () => {
-    if (req.path !== '/health') {
-      console.log(`${req.method} ${req.originalUrl} -> ${res.statusCode} (${Date.now() - started} ms)`);
-    }
-  });
-  next();
-});
-
-app.get('/health', (req, res) => res.json({ ok: true, name: 'campus-fix-api' }));
-
-// Uploaded photos are served as plain files.
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), { maxAge: '1d' }));
-
-app.use('/auth', require('./routes/auth'));
-// Order matters: /admin is checked first so its admin-only guard never touches student routes.
-app.use('/admin', require('./routes/admin'));
-app.use(require('./routes/users'));
-app.use(require('./routes/issues'));
-
-app.use(notFound);
-app.use(errorHandler);
-
-// First run on a fresh machine: fill the database with demo data.
-if (seedIfEmpty()) console.log('Empty database found: demo data added.');
 
 // 0.0.0.0 makes the server reachable from emulators and phones, not only this laptop.
 app.listen(PORT, '0.0.0.0', () => {
@@ -55,4 +18,5 @@ app.listen(PORT, '0.0.0.0', () => {
       }
     }
   }
+  if (hasWebApp) console.log(`  Web app and QR page: http://localhost:${PORT}/get   (run "npm run share" for a link that works on any phone)`);
 });

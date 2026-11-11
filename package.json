@@ -10,6 +10,12 @@
     "app": "npm start --prefix app",
     "seed": "npm run seed --prefix server",
     "smoke": "npm run smoke --prefix server",
-    "typecheck": "npm run typecheck --prefix app"
+    "typecheck": "npm run typecheck --prefix app",
+    "share": "node scripts/share.js",
+    "web:build": "npm run web:build --prefix app",
+    "phone": "node scripts/phone.js"
+  },
+  "engines": {
+    "node": "22.x"
   }
 }

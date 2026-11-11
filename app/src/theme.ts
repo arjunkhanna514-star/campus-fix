@@ -1,58 +1,45 @@
-// Colours, fonts and spacing for the whole app, in light and dark.
-// Screens never write a hex colour themselves; they read it from here.
+// Colours, fonts, spacing and motion for the whole app.
+// The look is "glass spheres in the dark": a living wallpaper of large glass
+// orbs on graphite, rim-lit in soft lavender and electric blue, with frosted
+// glass panes on top. Screens never write a colour themselves; they read it here.
 
-import { useColorScheme } from 'react-native';
 import type { Status } from './types';
 
-const light = {
-  bg: '#F2F4F3',
-  surface: '#FFFFFF',
-  surfaceAlt: '#E8ECEA',
-  ink: '#18212B',
-  inkSoft: '#55606C',
-  inkFaint: '#87919B',
-  line: '#D9DFDC',
-  // The yellow of a maintenance tag. Used for the main action and "you voted".
-  tag: '#FFC53D',
-  tagPressed: '#F0B429',
-  tagInk: '#2A2100',
-  tagSoft: '#FFF2C7',
-  danger: '#B42318',
-  dangerSoft: '#FCE8E6',
-  overlay: 'rgba(24, 33, 43, 0.55)',
+const c = {
+  bg: '#0D0D11',
+  // Glass layers: white at low opacity, so the wallpaper glows through.
+  surface: 'rgba(255,255,255,0.11)',
+  surfaceAlt: 'rgba(255,255,255,0.18)',
+  // Near-opaque graphite for places that must hide what is behind them (sheets, menus).
+  solid: '#22222B',
+  solidAlt: '#2E2E39',
+  ink: '#FFFFFF',
+  inkSoft: '#D6D5E2',
+  inkFaint: '#A9A8BA',
+  line: 'rgba(255,255,255,0.20)',
+  lineStrong: 'rgba(235,232,255,0.42)',
+  highlight: 'rgba(240,238,255,0.32)', // the bright top edge of a glass pane
+  // The main action is polished silver with graphite text. ("tag" is kept as
+  // the name for the primary colour so every component picks it up.)
+  tag: '#FFFFFF',
+  tagPressed: '#CFCDE2',
+  tagInk: '#121217',
+  tagSoft: 'rgba(215,212,250,0.20)',
+  // The two lights of the theme.
+  blue: '#5A82FF',
+  lavender: '#C2BCF2',
+  danger: '#FF7A72',
+  dangerSoft: 'rgba(255,99,90,0.14)',
+  overlay: 'rgba(6,6,9,0.7)',
 };
 
-const dark: typeof light = {
-  bg: '#11161C',
-  surface: '#1A2129',
-  surfaceAlt: '#242D37',
-  ink: '#EEF1F4',
-  inkSoft: '#AAB3BD',
-  inkFaint: '#74808C',
-  line: '#2D3742',
-  tag: '#FFC53D',
-  tagPressed: '#F0B429',
-  tagInk: '#2A2100',
-  tagSoft: '#3B3110',
-  danger: '#FF8A80',
-  dangerSoft: '#3B1E1B',
-  overlay: 'rgba(0, 0, 0, 0.65)',
-};
-
-type StatusColours = { fg: string; bg: string; dot: string };
-
-const statusLight: Record<Status, StatusColours> = {
-  Reported: { fg: '#4A5560', bg: '#E8ECEA', dot: '#7B8794' },
-  Acknowledged: { fg: '#1B4BB0', bg: '#E2EBFD', dot: '#2F6FED' },
-  'In Progress': { fg: '#A04307', bg: '#FDE8D8', dot: '#E8590C' },
-  Resolved: { fg: '#1C6631', bg: '#DCF2E2', dot: '#2F9E44' },
-};
-
-const statusDark: Record<Status, StatusColours> = {
-  Reported: { fg: '#C3CAD2', bg: '#2A333D', dot: '#8F9AA6' },
-  Acknowledged: { fg: '#A9C4FF', bg: '#1C2C4D', dot: '#5B8DEF' },
-  'In Progress': { fg: '#FFBE94', bg: '#44260F', dot: '#F27A32' },
-  Resolved: { fg: '#9DE0AE', bg: '#173622', dot: '#40B35A' },
+// Status keeps a faint tint so it can be told apart at a glance: grey,
+// blue, amber, green. Each status also has its own icon and text.
+const status: Record<Status, { fg: string; bg: string; dot: string }> = {
+  Reported: { fg: '#D2D1DE', bg: 'rgba(210,208,225,0.13)', dot: '#9A99AC' },
+  Acknowledged: { fg: '#A8C7FA', bg: 'rgba(120,160,240,0.16)', dot: '#6E9BF0' },
+  'In Progress': { fg: '#F8C88A', bg: 'rgba(240,170,90,0.16)', dot: '#E8A050' },
+  Resolved: { fg: '#9FDDB0', bg: 'rgba(110,200,140,0.16)', dot: '#5DBB7A' },
 };
 
 // Each weight is its own font file, so we pick a family name instead of fontWeight.
@@ -65,18 +52,23 @@ export const fonts = {
 };
 
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 };
-export const radius = { sm: 8, md: 12, lg: 16, pill: 999 };
+export const radius = { sm: 10, md: 14, lg: 22, pill: 999 };
 
 // Content never grows wider than this, so tablets and laptops stay readable.
 export const MAX_WIDTH = 760;
 
-export type Colours = typeof light;
+// The tab bar floats above the content, so scrolling lists leave this much room at the bottom.
+export const TAB_CLEARANCE = 112;
+
+// Springs used for presses and sheets, so every movement feels related.
+export const motion = {
+  press: { speed: 40, bounciness: 0 },
+  release: { speed: 20, bounciness: 8 },
+  sheet: { damping: 22, stiffness: 220, mass: 0.9 },
+};
+
+export type Colours = typeof c;
 
 export function useTheme() {
-  const isDark = useColorScheme() === 'dark';
-  return {
-    isDark,
-    c: isDark ? dark : light,
-    status: isDark ? statusDark : statusLight,
-  };
+  return { isDark: true, c, status };
 }
